@@ -156,50 +156,48 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         };
 
         builder.ImplementInterface(typeof(IParsable<>).ToNamedType().MakeGenericInstance(builder.Target), OverrideStrategy.Ignore);
-        IntroduceParse(builder, nameof(ParseTemplate), nameof(IParsable<>.Parse));
-        IntroduceTryParse(builder, nameof(TryParseTemplate), nameof(IParsable<>.TryParse));
+        IntroduceParse(builder, nameof(ParseTemplate), TypeFactory.GetType(SpecialType.String));
+        IntroduceTryParse(builder, nameof(TryParseTemplate), TypeFactory.GetType(SpecialType.String));
 
         // By the wrapped type, not the strategy: the string strategy, picked first, dropped string's own
         // ISpanParsable (found by the prober, claim C11, 2026-10-17).
         if (supportsSpan)
         {
             builder.ImplementInterface(typeof(ISpanParsable<>).ToNamedType().MakeGenericInstance(builder.Target), OverrideStrategy.Ignore);
-            IntroduceParse(builder, nameof(SpanParseTemplate), nameof(ISpanParsable<>.Parse));
-            IntroduceTryParse(builder, nameof(SpanTryParseTemplate), nameof(ISpanParsable<>.TryParse));
+            IntroduceParse(builder, nameof(SpanParseTemplate), TypeFactory.GetType(typeof(ReadOnlySpan<char>)));
+            IntroduceTryParse(builder, nameof(SpanTryParseTemplate), TypeFactory.GetType(typeof(ReadOnlySpan<char>)));
         }
 
         if (supportsUtf8)
         {
             builder.ImplementInterface(typeof(IUtf8SpanParsable<>).ToNamedType().MakeGenericInstance(builder.Target), OverrideStrategy.Ignore);
-            IntroduceParse(builder, nameof(Utf8SpanParseTemplate), nameof(IUtf8SpanParsable<>.Parse));
-            IntroduceTryParse(builder, nameof(Utf8SpanTryParseTemplate), nameof(IUtf8SpanParsable<>.TryParse));
+            IntroduceParse(builder, nameof(Utf8SpanParseTemplate), TypeFactory.GetType(typeof(ReadOnlySpan<byte>)));
+            IntroduceTryParse(builder, nameof(Utf8SpanTryParseTemplate), TypeFactory.GetType(typeof(ReadOnlySpan<byte>)));
         }
     }
 
     // A hand-written Parse or TryParse with these signatures is CMTK1011, so Fail is a backstop, never a
     // silent keep of an entry point that need not apply Create.
-    private static void IntroduceParse(IAspectBuilder<INamedType> builder, string template, string name) =>
+    private static void IntroduceParse(IAspectBuilder<INamedType> builder, string template, IType text) =>
         builder.IntroduceMethod(
             template,
             IntroductionScope.Static,
             OverrideStrategy.Fail,
             method =>
             {
-                method.Name       = name;
                 method.ReturnType = builder.Target;
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.Parse(builder.Target, text).Mark(method);
             });
 
-    private static void IntroduceTryParse(IAspectBuilder<INamedType> builder, string template, string name) =>
+    private static void IntroduceTryParse(IAspectBuilder<INamedType> builder, string template, IType text) =>
         builder.IntroduceMethod(
             template,
             IntroductionScope.Static,
             OverrideStrategy.Fail,
             method =>
             {
-                method.Name                      = name;
                 method.Parameters["result"].Type = builder.Target;
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.TryParse(builder.Target, text).Mark(method);
             });
 
     /// <summary>Whether <c>ISpanParsable</c> is generated: the wrapped type implements it, whatever its strategy for text.</summary>

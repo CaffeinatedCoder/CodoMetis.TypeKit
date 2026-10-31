@@ -30,9 +30,12 @@ internal static class ClosedSetTypes
     public static string AllExpression(INamedType set, IReadOnlyList<IField> members) =>
         $"global::System.Array.AsReadOnly(new {ValueObjectTypes.SourceName(set)}[] {{ {string.Join(", ", members.Select(member => $"{ValueObjectTypes.SourceName(set)}.{member.Name}"))} }})";
 
-    /// <summary>The names of what the generators introduce into the set itself; nothing else in it may have one (CMTK1011, CMTK1021).</summary>
+    /// <summary>
+    /// The names of what the generators introduce into the set itself, read from what they introduce
+    /// (<see cref="GeneratedMembers.OfClosedSet"/>); nothing else in it may have one (CMTK1011, CMTK1021).
+    /// </summary>
     public static IReadOnlyList<string> GeneratedNames(INamedType set) =>
-        ["Name", "QualifiedName", "All", "Match", "Parse", "TryParse", "ToString", "_name", "_all", $"{set.Name}JsonConverter", $"{set.Name}TypeConverter"];
+        [.. GeneratedMembers.OfClosedSet(set, Members(set).Count, everyCondition: true).Select(member => member.Name).Distinct()];
 
     /// <summary>
     /// The name of <paramref name="member"/>'s parameter of <c>Match</c>: its own, with the first letter
@@ -203,28 +206,18 @@ internal static class ClosedSetTypes
     /// </remarks>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
     {
-        (IType, bool) text = (TypeFactory.GetType(SpecialType.String), false);
-        (IType, bool) boolean = (TypeFactory.GetType(SpecialType.Boolean), false);
-        (IType, bool) result = (set, true);
         var parsable = TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(set);
-        var memberNames = new HashSet<string>(members.Select(member => member.ToDisplayString()));
-        var generatedNames = GeneratedNames(set);
         var bases = ValueObjectDeclaration.SelfAndBases(set).Skip(1).ToList();
 
-        IEnumerable<string> Declared(Func<INamedType, IEnumerable<IMethod>> find) =>
-            ValueObjectDeclaration.SelfAndBases(set).SelectMany(type => find(type).Where(method => method.IsAccessibleFrom(set)).Select(method => type.Equals(set)
-                ? ValueObjectDeclaration.Describe(method)
-                : $"{ValueObjectDeclaration.Describe(method)} in its base type {type.ToDisplayString()}"));
-
+        // By what the aspect introduces and C#'s overloading rules (MemberIdentity, decision 128). The set's own
+        // members are CMTK1021's, which says to rename them.
         List<string> found =
         [
-            .. ValueObjectDeclaration.MembersNamed(set, methods: false, [.. generatedNames]).Where(declared => !memberNames.Contains(declared)),
-            .. bases.SelectMany(type => type.Fields.Concat<IMember>(type.Properties).Concat(type.Events)
-                                            .Where(member => member is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && member.IsAccessibleFrom(set) && generatedNames.Contains(member.Name))
-                                            .Select(member => $"{member.ToDisplayString()} in its base type {type.ToDisplayString()}")),
-            .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean)))),
-            .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, result) || SameParameters(method, text, boolean, result)))),
-            .. Declared(type => type.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count))),
+            .. GeneratedMembers.OfClosedSet(set, members.Count)
+                               .SelectMany(generated => ValueObjectDeclaration.SelfAndBases(set)
+                                                                              .SelectMany(type => MemberIdentity.DeclaredInItsPlace(type, set, generated)
+                                                                                                                .Where(declared => !(declared is IField field && members.Contains(field)))
+                                                                                                                .Select(declared => ValueObjectDeclaration.DescribeDeclared(declared) + (type.Equals(set) ? "" : $" in its base type {type.ToDisplayString()}")))),
             .. ValueObjectDeclaration.ImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
             .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(parsable)).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
             .. set.ImplementedInterfaces.Where(implemented => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(parsable))).Select(implemented => $"the interface {parsable.ToDisplayString()} in its interface {implemented.ToDisplayString()}"),
@@ -241,26 +234,6 @@ internal static class ClosedSetTypes
                              .Select(attribute => $"the attribute {attribute.Type.Name.Substring(0, attribute.Type.Name.Length - nameof(Attribute).Length)}"),
         ];
     }
-
-    private static bool IsOwn(IMethod method) => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false };
-
-    /// <summary>
-    /// Parameter types equal, nullability aside, and each by reference where the generated one is <c>out</c>, in a
-    /// method without type parameters: Metalama refuses to introduce a method beside one of the same signature. A
-    /// generic <c>Parse&lt;T&gt;(string)</c> or a <c>TryParse(string?, TSelf)</c> is another method (#226).
-    /// </summary>
-    private static bool SameParameters(IMethod method, params (IType Type, bool Out)[] parameters) =>
-        method.TypeParameters.Count == 0
-     && method.Parameters.Count == parameters.Length
-     && method.Parameters.Zip(parameters, (declared, expected) => declared.Type.ToNonNullable().Equals(expected.Type.ToNonNullable()) && declared.RefKind != RefKind.None == expected.Out).All(same => same);
-
-    /// <summary>The generated <c>Match&lt;TResult&gt;</c>: one <c>Func&lt;TResult&gt;</c> per member.</summary>
-    private static bool IsGeneratedMatch(IMethod method, int memberCount) =>
-        method is { Name: "Match", TypeParameters.Count: 1 }
-     && method.Parameters.Count == memberCount
-     && method.Parameters.All(parameter => parameter.Type is INamedType { IsGeneric: true } func
-                                        && func.Definition.Equals(TypeFactory.GetNamedType(typeof(Func<>)))
-                                        && func.TypeArguments[0].Equals(method.TypeParameters[0]));
 
     /// <summary>
     /// Whether a <c>ToString()</c> is written by hand: the seam, kept in place of the generated one. A base class's

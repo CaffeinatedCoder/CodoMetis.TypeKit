@@ -34,7 +34,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             {
                 property.Accessibility = Accessibility.Public;
                 property.Type          = valueType;
-                property.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.Value(builder.Target, valueType).Mark(property);
             }
         );
 
@@ -101,7 +101,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             if (type.Equals(direct) || !ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;
 
             // One the value object declares itself implements the interface already, as C# maps it.
-            if (builder.Target.Methods.Any(method => method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.ToNonNullable().Equals(type) && ValueObjectDeclaration.IsByValueAndNotGeneric(method))) continue;
+            if (builder.Target.Methods.Any(GeneratedMembers.ReimplementedEquals(type).HasSignatureOf)) continue;
 
             var hidden = type;
             builder.IntroduceMethod(
@@ -113,7 +113,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
                     method.Name               = nameof(Equals);
                     method.Accessibility      = Accessibility.Public;
                     method.Parameters[0].Type = hidden.ToNullable();
-                    method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                    GeneratedMembers.ReimplementedEquals(hidden).Mark(method);
                 }
             );
         }
@@ -127,7 +127,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
                 method.Name               = nameof(Equals);
                 method.Accessibility      = Accessibility.Public;
                 method.Parameters[0].Type = builder.Target.ToNullable();
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.RecordEquals(builder.Target).Mark(method);
             },
             args: new { valueType }
         );
@@ -138,8 +138,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             OverrideStrategy.Override,
             buildMethod: method =>
             {
-                method.Name = nameof(GetHashCode);
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.RecordGetHashCode(builder.Target).Mark(method);
             },
             args: new { valueType }
         );
@@ -170,7 +169,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
                 method.IsStatic           = true;
                 method.Parameters[0].Type = valueType;
                 method.AddAttribute(CodeAnnotations.AggressiveInlining);
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.From(builder.Target, valueType).Mark(method);
             },
             args: new { constructor = privateConstructor, refusesNull = valueType.IsReferenceType == true }
         );
@@ -192,11 +191,10 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             OverrideStrategy.Ignore,
             buildMethod: method =>
             {
-                method.Name               = "TryFrom";
                 method.Accessibility      = Accessibility.Public;
                 method.ReturnType         = TypeFactory.GetNamedType(typeof(Option<>)).MakeGenericInstance(builder.Target);
                 method.Parameters[0].Type = valueType;
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.TryFrom(valueType, ValueObjectTypes.Markers(builder.Target)[0]).Mark(method);
             },
             args: new { target = builder.Target }
         );
@@ -222,10 +220,9 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             OverrideStrategy.Ignore,
             buildMethod: method =>
             {
-                method.Name          = "Revalidate";
                 method.Accessibility = Accessibility.Public;
                 method.ReturnType    = TypeFactory.GetNamedType(typeof(Result<,>)).MakeGenericInstance(builder.Target, fault);
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.Revalidate(ValueObjectTypes.Markers(builder.Target)[0]).Mark(method);
             },
             args: new { target = builder.Target }
         );
@@ -247,12 +244,11 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             OverrideStrategy.Ignore,
             buildMethod: method =>
             {
-                method.Name               = "FromKnownGood";
                 method.Accessibility      = Accessibility.Public;
                 method.ReturnType         = builder.Target;
                 method.Parameters[0].Type = valueType;
                 method.Parameters[1].AddAttribute(CodeAnnotations.CallerArgumentExpressionOfValue);
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.FromKnownGood(valueType, ValueObjectTypes.Markers(builder.Target)[0]).Mark(method);
             },
             args: new { target = builder.Target }
         );

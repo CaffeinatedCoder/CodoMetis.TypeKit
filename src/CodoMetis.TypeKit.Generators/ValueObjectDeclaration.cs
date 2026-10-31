@@ -54,7 +54,7 @@ internal static class ValueObjectDeclaration
     }
 
     private static bool IsHandWrittenToString(IMethod method) =>
-        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsByValueAndNotGeneric(method) && IsHandWritten(method);
+        method is { IsStatic: false, IsExplicitInterfaceImplementation: false } && MemberIdentity.HasSignature(method, nameof(ToString), 0, []) && IsHandWritten(method);
 
     /// <summary>
     /// A value object and the records it derives from, <see cref="object"/> left out. A struct has
@@ -169,112 +169,48 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// The names of the members the generators introduce into a value object, besides <c>Value</c>, for
-    /// some marker or wrapped type: a value object of one of these names failed inside the generated
-    /// code (LAMA0611, CS0542: a member cannot have the name of its type), naming nothing the user wrote
-    /// (measured 2026-10-13 for <c>From</c>, <c>TryFrom</c>, <c>Parse</c>, <c>TryParse</c>,
-    /// <c>TryFormat</c>, <c>MinValue</c> and <c>CompareTo</c>). Refused whatever it wraps, so the rule is
-    /// one list rather than one per wrapped type. What a record synthesizes (<c>ToString</c>,
-    /// <c>Equals</c>) is C#'s own error, and an explicit implementation (<c>IConvertible</c>'s) does not
-    /// collide.
-    /// </summary>
-    public static IReadOnlyList<string> GeneratedMemberNames { get; } =
-        ["From", "TryFrom", "FromKnownGood", "Revalidate", "Parse", "TryParse", "TryFormat", "MinValue", "MaxValue", "CompareTo", "_value", "__FromJson", "__FromText", "__TryFromText"];
-
-    /// <summary>
     /// What the declaration writes by hand that a generator introduces itself, which would fail inside
-    /// the generated code (LAMA0500, LAMA0503, LAMA0512, LAMA0521, LAMA0531, LAMA0611) naming nothing
+    /// the generated code (LAMA0500, LAMA0503, LAMA0506, LAMA0512, LAMA0521, LAMA0531, LAMA0611) naming nothing
     /// the user wrote, or, for a member the generators skip when it exists, would be kept silently as
     /// an entry point or a format the generated code never agreed to. The seams are not in it:
     /// <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>, <c>CompareTo(TSelf)</c>, <c>ToString()</c>
     /// and, for a validated value object, <c>Create</c>. Neither are the comparison interfaces, which
     /// ValueObjectComparableAspect answers (CMTK1008).
     /// </summary>
+    /// <remarks>
+    /// The members are the ones the aspects introduce (<see cref="GeneratedMembers.OfValueObject"/>), and a hand-written
+    /// one takes a generated one's place by <see cref="MemberIdentity"/>, C#'s overloading rules (decision 128). A
+    /// base record's count as the value object's own (#197). Beside a generated one, its public <c>Value</c>,
+    /// <c>From</c>, <c>Parse</c>, <c>TryParse</c>, <c>ToString(string?, IFormatProvider?)</c> or <c>TryFormat</c> failed
+    /// the aspect (LAMA0500), naming nothing the user wrote, and its static <c>MinValue</c> and <c>MaxValue</c> were kept
+    /// as the value object's, with no <c>MinValue</c> or <c>MaxValue</c> generated. One the value object cannot see, a
+    /// base's private member, stands in for nothing: C# hides it, and the generated one sits beside it (#230).
+    /// </remarks>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType target, INamedType valueType, ValueObjectKind kind)
     {
         List<string> found = [];
+        var generated = GeneratedMembers.OfValueObject(target, valueType, kind);
 
-        // The interfaces the generators implement for this declaration, whose explicit implementations
-        // are refused below. ValueObjectContractAspect: the equality operators.
-        List<INamedType> generatedInterfaces = [TypeFactory.GetNamedType(typeof(IEqualityOperators<,,>))];
-
-        // A base record's count as the value object's own (#197). Beside a generated one, its public
-        // Value, From, Parse, TryParse, ToString(string?, IFormatProvider?) or TryFormat failed the aspect
-        // (LAMA0500), naming nothing the user wrote, and its static MinValue and MaxValue were kept as the
-        // value object's, with no MinValue or MaxValue generated. One the value object cannot see, a base's
-        // private member, stands in for nothing: C# hides it, and the generated one sits beside it (#230).
-        IEnumerable<string> Declared(Func<INamedType, IEnumerable<string>> find) =>
-            SelfAndBases(target).SelectMany(type => find(type).Select(member => type.Equals(target) ? member : $"{member} in its base type {type.ToDisplayString()}"));
-
-        // ValueObjectAspect: the field, the entry points; ValueObjectContractAspect: Value; the JSON aspect's nested converter.
-        found.AddRange(Declared(type => MembersNamed(type, target, "_value", "Value", "__FromJson", "__FromText", "__TryFromText", $"{target.Name}JsonConverter")));
-
-        if (kind == ValueObjectKind.Plain)
+        foreach (var member in generated)
         {
-            found.AddRange(Declared(type => MethodsWithSignature(type, target, "From", (valueType, false))));
-            found.AddRange(Declared(type => MembersNamed(type, target, methods: false, "From")));
+            found.AddRange(SelfAndBases(target).SelectMany(type => MemberIdentity.DeclaredInItsPlace(type, target, member)
+                                                                                 .Select(declared => DescribeDeclared(declared) + (type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}"))));
         }
 
-        // A generated method's parameters, and whether each is out: an overload that takes one by value where the
-        // generated one takes it by reference, or the other way round, is another method (#226).
-        (IType, bool) stringType = (TypeFactory.GetType(SpecialType.String), false);
-        (IType, bool) provider   = (TypeFactory.GetType(typeof(IFormatProvider)), false);
-        (IType, bool) result     = (target, true);
+        // The interfaces the generators implement for this declaration, whose explicit implementations are refused
+        // below: those of the members refused above, and ValueObjectContractAspect's equality operators. The
+        // comparison interfaces are ValueObjectComparableAspect's (CMTK1008), and the contracts are checked below.
+        var contracts = TypeFactory.GetNamedType(typeof(IValueObject<,>)).DeclaringAssembly;
 
-        // ValueObjectParsableAspect and, where parsing is generated, ValueObjectTypeConverterAspect.
+        List<INamedType> generatedInterfaces =
+        [
+            TypeFactory.GetNamedType(typeof(IEqualityOperators<,,>)),
+            .. generated.Where(member => member.Role == GeneratedMemberRole.Refused && !member.Contract.DeclaringAssembly.Equals(contracts))
+                        .Select(member => member.Contract.Definition)
+                        .Distinct()
+        ];
+
         var parse = ValueObjectParsableAspect.ResolveStrategy(valueType);
-
-        if (parse != ValueParseStrategy.Unsupported)
-        {
-            found.AddRange(Declared(type => MethodsWithSignature(type, target, "Parse", stringType, provider)));
-            found.AddRange(Declared(type => MethodsWithSignature(type, target, "TryParse", stringType, provider, result)));
-            found.AddRange(Declared(type => MembersNamed(type, target, $"{target.Name}TypeConverter")));
-            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IParsable<>)));
-
-            if (ValueObjectParsableAspect.SupportsSpan(valueType))
-            {
-                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanParsable<>)));
-
-                (IType, bool) span = (TypeFactory.GetType(typeof(ReadOnlySpan<char>)), false);
-                found.AddRange(Declared(type => MethodsWithSignature(type, target, "Parse", span, provider)));
-                found.AddRange(Declared(type => MethodsWithSignature(type, target, "TryParse", span, provider, result)));
-            }
-
-            if (ValueObjectParsableAspect.SupportsUtf8(valueType))
-            {
-                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanParsable<>)));
-
-                (IType, bool) utf8 = (TypeFactory.GetType(typeof(ReadOnlySpan<byte>)), false);
-                found.AddRange(Declared(type => MethodsWithSignature(type, target, "Parse", utf8, provider)));
-                found.AddRange(Declared(type => MethodsWithSignature(type, target, "TryParse", utf8, provider, result)));
-            }
-        }
-
-        // ValueObjectFormattableAspect, unless ToString() is hand-written and it generates nothing.
-        if (!DeclaresToString(target))
-        {
-            found.AddRange(Declared(type => MethodsWithSignature(type, target, nameof(IFormattable.ToString), stringType, provider)));
-            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IFormattable)));
-
-            if (ValueObjectFormattableAspect.ResolveStrategy(valueType) == ValueFormatStrategy.SpanFormattable)
-            {
-                found.AddRange(Declared(type => MethodsWithSignature(type, target, nameof(ISpanFormattable.TryFormat), (TypeFactory.GetType(typeof(Span<char>)), false), (TypeFactory.GetType(SpecialType.Int32), true), (TypeFactory.GetType(typeof(ReadOnlySpan<char>)), false), provider)));
-                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanFormattable)));
-            }
-
-            if (ValueObjectFormattableAspect.SupportsUtf8(valueType))
-            {
-                found.AddRange(Declared(type => MethodsWithSignature(type, target, nameof(IUtf8SpanFormattable.TryFormat), (TypeFactory.GetType(typeof(Span<byte>)), false), (TypeFactory.GetType(SpecialType.Int32), true), (TypeFactory.GetType(typeof(ReadOnlySpan<char>)), false), provider)));
-                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanFormattable)));
-            }
-        }
-
-        // ValueObjectMinMaxValueAspect.
-        if (kind == ValueObjectKind.Plain && ValueObjectMinMaxValueAspect.HasMinMaxValue(valueType))
-        {
-            found.AddRange(Declared(type => MembersNamed(type, target, nameof(IMinMaxValue<int>.MinValue), nameof(IMinMaxValue<int>.MaxValue))));
-            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IMinMaxValue<>)));
-        }
 
         // An explicit implementation of an interface the generators implement sat beside the generated
         // member, which it hides from every caller through the interface: a generic T.Parse bypassed
@@ -453,14 +389,27 @@ internal static class ValueObjectDeclaration
     /// expression parameter makes it another signature, so it is not one, and a base's private one is hidden from the
     /// value object, which C# never calls it for (#230).
     /// </summary>
-    public static IReadOnlyList<string> InheritedSeams(INamedType target, INamedType valueType, ValueObjectKind kind) =>
-        kind != ValueObjectKind.Validated
-            ? []
-            : [.. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
-                                                                     .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation && IsByValueAndNotGeneric(method) && method.IsAccessibleFrom(target)
-                                                                                   && (method is { Name: "TryFrom", IsStatic: true, Parameters: [{ } value] } && value.Type.ToNonNullable().Equals(valueType.ToNonNullable())
-                                                                                    || method is { Name: "Revalidate", IsStatic: false, Parameters.Count: 0 }))
-                                                                     .Select(method => $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}"))];
+    /// <remarks>
+    /// By the generated member's signature (<see cref="MemberIdentity"/>): a base's <c>TryFrom(int?)</c> over an
+    /// <c>int</c> is another method, which the generated <c>TryFrom(int)</c> sits beside, as it does beside the value
+    /// object's own (decision 128). Each seam keeps its own static-ness: an instance <c>TryFrom</c> is no factory.
+    /// </remarks>
+    public static IReadOnlyList<string> InheritedSeams(INamedType target, INamedType valueType, ValueObjectKind kind)
+    {
+        if (kind != ValueObjectKind.Validated) return [];
+
+        var marker     = ValueObjectTypes.Markers(target)[0];
+        var tryFrom    = GeneratedMembers.TryFrom(valueType, marker);
+        var revalidate = GeneratedMembers.Revalidate(marker);
+
+        return
+        [
+            .. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
+                                                               .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation && method.IsAccessibleFrom(target)
+                                                                             && (method.IsStatic && tryFrom.HasSignatureOf(method) || !method.IsStatic && revalidate.HasSignatureOf(method)))
+                                                               .Select(method => $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}"))
+        ];
+    }
 
     /// <summary>
     /// How a validated value object declares <c>Create</c>: as an explicit implementation of the
@@ -531,7 +480,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. SelfAndBases(target).SelectMany(type => type.Methods
-                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsByValueAndNotGeneric(method) && IsHandWritten(method))
+                                                           .Where(method => method is { IsStatic: false } && MemberIdentity.HasSignature(method, "PrintMembers", 0, [GeneratedParameter.Of(stringBuilder)]) && IsHandWritten(method))
                                                            .Select(method => Describe(method) + (type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}")))
         ];
     }
@@ -667,66 +616,15 @@ internal static class ValueObjectDeclaration
     internal static bool IsHandWritten(IMember member) =>
         !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
 
+    /// <summary>A hand-written member that takes a generated one's place, as an error names it.</summary>
+    internal static string DescribeDeclared(IMemberOrNamedType declared) =>
+        declared is IMember member ? Describe(member) : $"the nested type {declared.ToDisplayString()}";
+
     /// <summary>
     /// A method without type parameters whose parameters are all by value, as every generated method is but
-    /// <c>TryParse</c> and <c>TryFormat</c> (<see cref="MethodsWithSignature"/>): C# overloads by arity and by a
+    /// <c>TryParse</c> and <c>TryFormat</c> (<see cref="MemberIdentity"/>): C# overloads by arity and by a
     /// parameter's ref kind, so a generic <c>CompareTo&lt;T&gt;(object?)</c> or a <c>TryFrom(in int)</c> is another
     /// method, which the generated one sits beside, and no seam (#226).
     /// </summary>
-    internal static bool IsByValueAndNotGeneric(IMethod method) =>
-        method.TypeParameters.Count == 0 && method.Parameters.All(parameter => parameter.RefKind == RefKind.None);
-
-    /// <summary>
-    /// Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind, that
-    /// <paramref name="seenFrom"/> can see: a base's private member is hidden from the value object (#230).
-    /// </summary>
-    private static IEnumerable<string> MembersNamed(INamedType target, INamedType seenFrom, params string[] names) => MembersNamed(target, seenFrom, methods: true, names);
-
-    /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>.</summary>
-    internal static IEnumerable<string> MembersNamed(INamedType target, bool methods, params string[] names) => MembersNamed(target, target, methods, names);
-
-    /// <remarks>
-    /// An explicit implementation is <see cref="ImplementationsOf"/>'s, which names it, and so is a public static
-    /// member of another assembly that implements a static abstract one, which reads as explicit there.
-    /// </remarks>
-    private static IEnumerable<string> MembersNamed(INamedType target, INamedType seenFrom, bool methods, params string[] names)
-    {
-        foreach (var field in target.Fields)
-            if (!field.IsImplicitlyDeclared && Enumerable.Contains(names, field.Name) && field.IsAccessibleFrom(seenFrom)) yield return field.ToDisplayString();
-
-        foreach (var property in target.Properties)
-            if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && Enumerable.Contains(names, property.Name) && property.IsAccessibleFrom(seenFrom)) yield return property.ToDisplayString();
-
-        foreach (var @event in target.Events)
-            if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && Enumerable.Contains(names, @event.Name) && @event.IsAccessibleFrom(seenFrom)) yield return @event.ToDisplayString();
-
-        foreach (var nested in target.Types)
-            if (Enumerable.Contains(names, nested.Name) && nested.IsAccessibleFrom(seenFrom)) yield return $"the nested type {nested.ToDisplayString()}";
-
-        if (!methods) yield break;
-
-        foreach (var method in target.Methods)
-            if (!method.IsImplicitlyDeclared && !method.IsExplicitInterfaceImplementation && Enumerable.Contains(names, method.Name) && method.IsAccessibleFrom(seenFrom)) yield return method.ToDisplayString();
-    }
-
-    /// <summary>
-    /// Methods named <paramref name="name"/> whose parameter types are <paramref name="parameters"/>,
-    /// whatever they return, that <paramref name="seenFrom"/> can see: a generated member with that signature is
-    /// either refused by Metalama or skipped in favour of the hand-written one.
-    /// </summary>
-    /// <remarks>
-    /// The signature C# overloads by (#226): no type parameters, as the generated method has none, and each
-    /// parameter by reference where the generated one is <c>out</c>, by value where it is by value. A generic
-    /// <c>Parse&lt;TFormat&gt;(string, IFormatProvider?)</c>, a <c>From(in int)</c> and a <c>TryParse</c> whose
-    /// last parameter is by value are other methods, which the generated ones sit beside. <c>ref</c> or <c>in</c>
-    /// against <c>out</c> is no overload in C# (CS0663), so it is the same method, as nullability is.
-    /// </remarks>
-    private static IEnumerable<string> MethodsWithSignature(INamedType target, INamedType seenFrom, string name, params (IType Type, bool Out)[] parameters) =>
-        target.Methods
-              .Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, TypeParameters.Count: 0 }
-                            && method.Name == name
-                            && method.Parameters.Count == parameters.Length
-                            && method.Parameters.Zip(parameters, (declared, expected) => declared.Type.Equals(expected.Type) && declared.RefKind != RefKind.None == expected.Out).All(same => same)
-                            && method.IsAccessibleFrom(seenFrom))
-              .Select(method => method.ToDisplayString());
+    internal static bool IsByValueAndNotGeneric(IMethod method) => MemberIdentity.IsByValueAndNotGeneric(method);
 }

@@ -78,9 +78,8 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             OverrideStrategy.Ignore,
             m =>
             {
-                m.Name               = nameof(IComparable<int>.CompareTo);
                 m.Parameters[0].Type = OperandType(builder.Target);
-                m.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.CompareTo(builder.Target).Mark(m);
             }
         );
 
@@ -92,11 +91,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             nameof(ObjectCompareTo),
             IntroductionScope.Instance,
             OverrideStrategy.Fail,
-            m =>
-            {
-                m.Name = nameof(IComparable.CompareTo);
-                m.AddAttribute(CodeAnnotations.CompilerGenerated);
-            }
+            m => GeneratedMembers.ObjectCompareTo().Mark(m)
         );
 
         // Comparison operators — all delegate to CompareTo
@@ -114,7 +109,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         );
     }
 
-    private static ValueCompareStrategy ResolveStrategy(INamedType valueType)
+    internal static ValueCompareStrategy ResolveStrategy(INamedType valueType)
     {
         // string.CompareTo is culture-sensitive, and the record's equality is ordinal.
         if (valueType.SpecialType == SpecialType.String)
@@ -145,7 +140,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         {
             if (method.IsExplicitInterfaceImplementation || !ValueObjectDeclaration.IsByValueAndNotGeneric(method)) continue;
 
-            var isObjectOverload = method is { Name: nameof(IComparable.CompareTo), Parameters: [{ Type.SpecialType: SpecialType.Object }] };
+            var isObjectOverload = GeneratedMembers.ObjectCompareTo().HasSignatureOf(method);
             var isOrderingOperator = method.OperatorKind is OperatorKind.LessThan or OperatorKind.GreaterThan
                                                           or OperatorKind.LessThanOrEqual or OperatorKind.GreaterThanOrEqual;
 
@@ -162,9 +157,9 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         {
             foreach (var method in type.Methods)
             {
-                if (method is { IsStatic: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable.CompareTo), Parameters: [{ } other] }
-                 && ValueObjectDeclaration.IsByValueAndNotGeneric(method) && ValueObjectDeclaration.IsHandWritten(method) && method.IsAccessibleFrom(target)
-                 && (other.Type.SpecialType == SpecialType.Object || other.Type.ToNonNullable().Equals(target)))
+                if (method is { IsStatic: false, IsExplicitInterfaceImplementation: false }
+                 && ValueObjectDeclaration.IsHandWritten(method) && method.IsAccessibleFrom(target)
+                 && (GeneratedMembers.ObjectCompareTo().HasSignatureOf(method) || GeneratedMembers.CompareTo(target).HasSignatureOf(method)))
                     yield return $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}";
             }
         }
@@ -176,10 +171,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
 
     /// <summary>The seam: a <c>CompareTo(TSelf)</c> the type declares itself, which the generated one then leaves in place.</summary>
     private static bool DeclaresCompareTo(INamedType target) =>
-        target.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable<int>.CompareTo) }
-                                  && ValueObjectDeclaration.IsByValueAndNotGeneric(method)
-                                  && method.Parameters is [var other]
-                                  && other.Type.Equals(target));
+        target.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && GeneratedMembers.CompareTo(target).HasSignatureOf(method));
 
     /// <summary>
     /// The operand type: nullable for a record class, as <c>IComparable&lt;T&gt;.CompareTo(T?)</c> and

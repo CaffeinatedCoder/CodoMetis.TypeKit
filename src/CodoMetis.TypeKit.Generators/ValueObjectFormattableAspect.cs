@@ -61,25 +61,21 @@ internal sealed partial class ValueObjectFormattableAspect : TypeAspect
             nameof(FormattableToStringTemplate),
             IntroductionScope.Instance,
             OverrideStrategy.Fail,
-            m =>
-            {
-                m.Name = nameof(IFormattable.ToString);
-                m.AddAttribute(CodeAnnotations.CompilerGenerated);
-            }
+            m => GeneratedMembers.FormattableToString().Mark(m)
         );
 
         // Override the parameterless ToString() so it stays consistent
         // with the formattable overload. Records already generate one,
         // so OverrideStrategy.Override is intentional here.
+        //
+        // Metalama writes this over the record's synthesized ToString(), an implicitly declared member, and applies
+        // none of the build delegate's attributes there, nor introduces one on it (measured 2026-10-31): the
+        // value object's ToString() carries neither [CompilerGenerated] nor [GeneratedMember].
         builder.IntroduceMethod(
             nameof(ToStringOverrideTemplate),
             IntroductionScope.Instance,
             OverrideStrategy.Override,
-            m =>
-            {
-                m.Name = nameof(IFormattable.ToString);
-                m.AddAttribute(CodeAnnotations.CompilerGenerated);
-            }
+            m => GeneratedMembers.ToStringOverride(builder.Target, valueType).Mark(m)
         );
 
         // Mirror the IParsable → ISpanParsable layering pattern exactly.
@@ -91,11 +87,7 @@ internal sealed partial class ValueObjectFormattableAspect : TypeAspect
                 nameof(TryFormatTemplate),
                 IntroductionScope.Instance,
                 OverrideStrategy.Fail,
-                m =>
-                {
-                    m.Name = nameof(ISpanFormattable.TryFormat);
-                    m.AddAttribute(CodeAnnotations.CompilerGenerated);
-                }
+                m => GeneratedMembers.TryFormat().Mark(m)
             );
         }
 
@@ -107,11 +99,7 @@ internal sealed partial class ValueObjectFormattableAspect : TypeAspect
                 nameof(TryFormatUtf8Template),
                 IntroductionScope.Instance,
                 OverrideStrategy.Fail,
-                m =>
-                {
-                    m.Name = nameof(IUtf8SpanFormattable.TryFormat);
-                    m.AddAttribute(CodeAnnotations.CompilerGenerated);
-                }
+                m => GeneratedMembers.TryFormatUtf8().Mark(m)
             );
         }
     }

@@ -30,7 +30,7 @@ internal sealed partial class ValueObjectTypeConverterAspect : TypeAspect
                 t.BaseType      = TypeFactory.GetNamedType(typeof(TypeConverter));
                 t.IsPartial     = true;
                 t.IsStatic      = false;
-                t.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.TypeConverter(builder.Target, ValueObjectTypes.Markers(builder.Target)[0]).Mark(t);
             }
         );
 

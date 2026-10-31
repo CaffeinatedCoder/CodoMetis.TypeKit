@@ -21,8 +21,11 @@ section is the GitHub release's notes.
 
 - Packages: the public surface is checked against 2.3.1's, so nothing 2.3.1 ships is removed or changed in 2.4.0.
 
+- Generators: a property, field or nested type you wrote with the name of a generated member, on the value object, a closed set or a base of either, such as `public static int Parse => 1`, now fails with CMTK1011 naming it, where it failed with a Metalama error (LAMA0506, LAMA0531) that named nothing you wrote. So does a closed set's own method named as a generated property, such as `Name()` ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
+
 ### Fixed
 
+- Generators: an overload that differs from a generated member only by a nullable value type, such as a base record's `TryFrom(int?)` over an `int` or a closed set's `Parse(string, bool?)`, a base record's method named as a generated property, such as `MinValue()`, and an overload of a private entry point are kept beside the generated member, where the build failed with CMTK1011 ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 - EF Core: a query that uses an arithmetic or bitwise operator a value object declares by hand, `&&` and `||` included, throws, naming the value object, where the database ran its own arithmetic and skipped the operator; a query filter fails when the model is built ([Queries](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
 
 ## 2.3.1 — 2026-10-31

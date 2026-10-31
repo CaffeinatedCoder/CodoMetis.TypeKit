@@ -49,9 +49,8 @@ internal sealed partial class ValueObjectMinMaxValueAspect : TypeAspect
             OverrideStrategy.Ignore,
             p =>
             {
-                p.Name = nameof(IMinMaxValue<int>.MinValue);
                 p.Type = builder.Target;
-                p.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.MinValue(builder.Target).Mark(p);
             }
         );
 
@@ -61,9 +60,8 @@ internal sealed partial class ValueObjectMinMaxValueAspect : TypeAspect
             OverrideStrategy.Ignore,
             p =>
             {
-                p.Name = nameof(IMinMaxValue<int>.MaxValue);
                 p.Type = builder.Target;
-                p.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.MaxValue(builder.Target).Mark(p);
             }
         );
     }

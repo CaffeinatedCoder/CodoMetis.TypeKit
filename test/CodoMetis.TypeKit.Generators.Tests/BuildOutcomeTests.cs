@@ -196,6 +196,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetOverLibraryOpenToString", "LibraryOpenToStringSetBase.ToString() in its base type, which is not sealed")]
     [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
     [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
+    [InlineData("SetWithNameMethod", "SetWithNameMethod.Name()")]
+    [InlineData("SetOverNestedConverterBase", "the nested type NestedConverterSetBase.SetOverNestedConverterBaseJsonConverter in its base type NestedConverterSetBase")]
     public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(declared), consumer.Output);
 
@@ -211,6 +213,25 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetOverPrivateFieldsBase")]
     [InlineData("SetOverAttributedBase")]
     public void What_a_set_s_base_class_declares_out_of_the_generators_way_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}"), consumer.Output);
+
+    /// <summary>
+    /// A member that C# overloads or hides beside the generated one is no hand-written generated member (decision 128):
+    /// <c>int?</c> is <c>Nullable&lt;int&gt;</c>, another type than <c>int</c>, so a base's <c>TryFrom(int?)</c> and a set's
+    /// <c>Parse(string, bool?)</c> are other methods, as the value object's own <c>TryFrom(int?)</c> already was; a base's
+    /// method of a generated property's or field's name is hidden by it; an entry point's overload of another signature
+    /// is another method. Each was CMTK1011 through a check of its own, and each builds with warnings as errors and
+    /// answers through the generated member (measured 2026-10-31). A set base's <c>All()</c> built before and still does.
+    /// </summary>
+    [Theory]
+    [InlineData("OverNullableTryFromBase")]
+    [InlineData("SetWithNullableIgnoreCaseParse")]
+    [InlineData("OverMinValueMethodBase")]
+    [InlineData("OverValueMethodBase")]
+    [InlineData("OverFieldMethodBase")]
+    [InlineData("EntryPointOverloaded")]
+    [InlineData("SetOverAllMethodBase")]
+    public void A_member_C_s_rules_keep_apart_from_the_generated_one_builds(string type) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}"), consumer.Output);
 
     /// <summary>
@@ -343,6 +364,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("TryParseByRef", "TryParseByRef.TryParse(string?, IFormatProvider?, ref TryParseByRef)")]
     [InlineData("TryParseByIn", "TryParseByIn.TryParse(string?, IFormatProvider?, in TryParseByIn)")]
     [InlineData("ParseOfOtherNullability", "ParseOfOtherNullability.Parse(string?, IFormatProvider)")]
+    [InlineData("ParseAsProperty", "ParseAsProperty.Parse")]
+    [InlineData("OverParsePropertyBase", "ParsePropertyBase.Parse in its base type ParsePropertyBase")]
+    [InlineData("OverTryFormatFieldBase", "TryFormatFieldBase.TryFormat in its base type TryFormatFieldBase")]
+    [InlineData("TryFromAsProperty", "TryFromAsProperty.TryFrom")]
+    [InlineData("CompareToAsField", "CompareToAsField.CompareTo")]
     [InlineData("TryFormatByRef", "TryFormatByRef.TryFormat(Span<char>, ref int, ReadOnlySpan<char>, IFormatProvider?)")]
     [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
     [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
@@ -1997,6 +2023,60 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
                 public Fine Id { get; }
             }
+
+            // Another kind of member of a generated member's name: Metalama introduced no method beside it (LAMA0506),
+            // in the type or a base, now CMTK1011 (decision 128).
+            public readonly partial record struct ParseAsProperty : IValue<int> { public static int Parse => 1; }
+
+            public abstract record ParsePropertyBase { public static int Parse => 1; }
+
+            public sealed partial record OverParsePropertyBase : ParsePropertyBase, IValue<int>;
+
+            public abstract record TryFormatFieldBase { public static int TryFormat = 1; }
+
+            public sealed partial record OverTryFormatFieldBase : TryFormatFieldBase, IValue<int>;
+
+            public readonly partial record struct TryFromAsProperty : IValidatedValue<TryFromAsProperty, int, Fault>
+            {
+                public static Result<TryFromAsProperty, Fault> Create(int value) => Result.Error(Fault.Refused);
+
+                public static int TryFrom => 1;
+            }
+
+            public readonly partial record struct CompareToAsField : IValue<int> { public static int CompareTo = 1; }
+
+            // What C#'s overloading and hiding keep apart from a generated member, which builds beside it (decision 128).
+            public abstract record NullableTryFromBase { public static Option<OverNullableTryFromBase> TryFrom(int? value) => Option.None(); }
+
+            public sealed partial record OverNullableTryFromBase : NullableTryFromBase, IValidatedValue<OverNullableTryFromBase, int, Fault>
+            {
+                public static Result<OverNullableTryFromBase, Fault> Create(int value) => Result.Error(Fault.Refused);
+            }
+
+            public sealed partial class SetWithNullableIgnoreCaseParse : IClosedSet<SetWithNullableIgnoreCaseParse>
+            {
+                public static readonly SetWithNullableIgnoreCaseParse A = new();
+
+                public static SetWithNullableIgnoreCaseParse Parse(string name, bool? ignoreCase) => A;
+            }
+
+            public abstract record MinValueMethodBase { public static int MinValue() => 1; }
+
+            public sealed partial record OverMinValueMethodBase : MinValueMethodBase, IValue<int>;
+
+            public abstract record ValueMethodBase { public int Value() => 1; }
+
+            public sealed partial record OverValueMethodBase : ValueMethodBase, IValue<int>;
+
+            public abstract record FieldMethodBase { public int _value() => 1; }
+
+            public sealed partial record OverFieldMethodBase : FieldMethodBase, IValue<int>;
+
+            public readonly partial record struct EntryPointOverloaded : IValue<int> { private static int __FromJson(string value) => 1; }
+
+            public abstract class AllMethodSetBase { public static int All() => 1; }
+
+            public sealed partial class SetOverAllMethodBase : AllMethodSetBase, IClosedSet<SetOverAllMethodBase> { public static readonly SetOverAllMethodBase A = new(); }
             """;
 
         /// <summary>
@@ -2134,6 +2214,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithIgnoreCaseTryParse : IClosedSet<SetWithIgnoreCaseTryParse> { public static readonly SetWithIgnoreCaseTryParse A = new(); public static bool TryParse(string? name, bool ignoreCase, out SetWithIgnoreCaseTryParse? member) { member = A; return true; } }
 
             public sealed partial class SetWithIgnoreCaseParse : IClosedSet<SetWithIgnoreCaseParse> { public static readonly SetWithIgnoreCaseParse A = new(); public static SetWithIgnoreCaseParse Parse(string name, bool ignoreCase) => A; }
+
+            // A method of a generated property's name: CS0102 inside the generated code (LAMA0611), now CMTK1011.
+            public sealed partial class SetWithNameMethod : IClosedSet<SetWithNameMethod> { public static readonly SetWithNameMethod A = new(); public string Name() => ""; }
+
+            // A base's nested type of a generated one's name: LAMA0531, now CMTK1011.
+            public abstract class NestedConverterSetBase { public sealed class SetOverNestedConverterBaseJsonConverter; }
+
+            public sealed partial class SetOverNestedConverterBase : NestedConverterSetBase, IClosedSet<SetOverNestedConverterBase> { public static readonly SetOverNestedConverterBase A = new(); }
 
             // Named as a generated member: LAMA0611 (CS0542) inside the generated code.
             public static class SetNames

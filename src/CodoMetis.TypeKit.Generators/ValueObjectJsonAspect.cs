@@ -94,7 +94,7 @@ internal sealed partial class ValueObjectJsonAspect : TypeAspect
                 type.BaseType      = typeof(JsonConverter<>).ToNamedType().MakeGenericInstance(builder.Target);
                 type.IsPartial     = true;
                 type.IsStatic      = false;
-                type.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.JsonConverter(builder.Target, ValueObjectTypes.Markers(builder.Target)[0]).Mark(type);
             }
         );
 
