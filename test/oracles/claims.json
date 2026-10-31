@@ -3645,10 +3645,10 @@
     ]
   },
   {
-    "id": "P06-inlined",
+    "id": "P06-element-by-element",
     "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
-    "quote": "**Inlined**, rather than as a component of its own.",
-    "claim": "**Inlined**, rather than as a component of its own.",
+    "quote": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "claim": "A patch inside a list or a dictionary is described the same way, element by element.",
     "oracle": "claim",
     "surfaces": [
       "TypeKitOpenApiOptionsExtensions.AddTypeKit"
@@ -3658,24 +3658,10 @@
     ]
   },
   {
-    "id": "P06-through-the-underlying-type",
+    "id": "P06-inlined",
     "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
-    "quote": "A value object inside a patch is described through its underlying type, so `email` is a `string`.",
-    "claim": "A value object inside a patch is described through its underlying type, so `email` is a `string`.",
-    "oracle": "claim",
-    "surfaces": [
-      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
-    ],
-    "heldBy": [
-      "PatchSchemaTests",
-      "MergePatchesTests"
-    ]
-  },
-  {
-    "id": "P06-element-by-element",
-    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
-    "quote": "A patch inside a list or a dictionary is described the same way, element by element.",
-    "claim": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "quote": "**Inlined**, rather than as a component of its own.",
+    "claim": "**Inlined**, rather than as a component of its own.",
     "oracle": "claim",
     "surfaces": [
       "TypeKitOpenApiOptionsExtensions.AddTypeKit"
@@ -3734,6 +3720,20 @@
     ],
     "heldBy": [
       "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-through-the-underlying-type",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "A value object inside a patch is described through its underlying type, so `email` is a `string`.",
+    "claim": "A value object inside a patch is described through its underlying type, so `email` is a `string`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests",
+      "MergePatchesTests"
     ]
   },
   {
