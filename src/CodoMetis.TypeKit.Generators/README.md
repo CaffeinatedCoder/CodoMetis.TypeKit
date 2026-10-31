@@ -239,6 +239,12 @@ covers:
   `MaxValue` would stand in for the generated one, and generic code calling `T.MaxValue` would reach
   it. The error names the base.
 
+An overload of a generated member is yours, and the generated one sits beside it. C# tells two methods
+apart by their type parameters and by whether a parameter is `ref`, `in` or `out`, so a
+`Parse<TFormat>(string, IFormatProvider?)`, a `From(in int value)` or a `TryParse` whose last parameter
+isn't `out` is kept, on the value object or a base record. A `ref` or `in` where the generated member has
+`out` is the same method to C#, as a different nullability is, so it fails the build like the member itself.
+
 Two explicit implementations in an interface are fine, because a value object loses nothing by
 replacing them. A record's own `==` and `!=` replace an interface's, generated or not. And .NET's
 `INumberBase<TSelf>` formats and parses UTF-8 through the UTF-16 members, which every .NET number
@@ -462,8 +468,8 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>, IParsable<Ord
   in case (`Open` and `open`), since `TryParse(name, ignoreCase: true)` couldn't tell them apart
   (CMTK1021).
 - **A `ToString()` you write is kept**, and the name is still what JSON, parsing and the column use.
-- **An overload of a generated method with another signature**, such as `Parse(int rank)`, is kept
-  too. Any other generated member written by hand fails the build (CMTK1011), in the set or in a
+- **An overload of a generated method with another signature**, such as `Parse(int rank)` or a
+  generic `Parse<TFormat>(string name)`, is kept too. Any other generated member written by hand fails the build (CMTK1011), in the set or in a
   class it derives from.
 - **A base class's `ToString()`.** A `sealed` one is kept, since C# keeps it in every derived class.
   One that isn't sealed fails the build (CMTK1011), because the generated `ToString()` would replace

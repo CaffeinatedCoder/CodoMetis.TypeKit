@@ -184,6 +184,12 @@
     members of a generated name or signature and its `IParsable<TSelf>` are CMTK1011, its `sealed` `ToString()` is
     the seam and one not sealed is CMTK1011 (#205). Not refused: an interface's `==`, which the record's own
     replaces anyway, and `INumberBase<TSelf>`'s UTF-8 bridges.
+  - **A signature is what C# overloads by (#226).** A hand-written method matches a generated one only with no type
+    parameters, as the generated one has none, and with each parameter by reference where the generated one's is
+    `out` and by value where it is by value. A generic `Parse<TFormat>(string, IFormatProvider?)`, a `From(in int)`
+    and a `TryParse` whose last parameter is by value were CMTK1011, on the type, a base record and a closed set,
+    though Metalama introduces the generated member beside each (measured 2026-10-31). `ref` or `in` against `out` is
+    no overload in C# (CS0663), and nullability none at all, so both stay CMTK1011.
   - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
     A derived record's synthesized equality calls the base's, which compares the base's fields and
     whatever the base declares. A base comparing by reference made two value objects holding 42 unequal

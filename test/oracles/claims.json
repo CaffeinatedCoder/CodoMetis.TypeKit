@@ -1281,6 +1281,35 @@
     ]
   },
   {
+    "id": "C22-an-overload-in-a-closed-set",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "**An overload of a generated method with another signature**, such as `Parse(int rank)` or a generic `Parse<TFormat>(string name)`, is kept too.",
+    "claim": "A closed set's hand-written overload of Parse or TryParse with another signature, generic or by value where the generated one is out, is kept beside the generated one, in the set or its base class.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "OverloadTests",
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-an-overload-of-a-generated-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "C# tells two methods apart by their type parameters and by whether a parameter is `ref`, `in` or `out`, so a `Parse<TFormat>(string, IFormatProvider?)`, a `From(in int value)` or a `TryParse` whose last parameter isn't `out` is kept, on the value object or a base record. A `ref` or `in` where the generated member has `out` is the same method to C#, as a different nullability is, so it fails the build like the member itself.",
+    "claim": "A hand-written overload of a generated member that differs by its type parameters or by a ref kind against a by-value parameter is kept beside the generated member, on the value object or a base record; ref or in against out, or another nullability, fails the build with CMTK1011.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "OverloadTests",
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-closed-set-named-as-generated-member",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "a set itself named as one of them (a member can't have the name of its type)",

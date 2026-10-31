@@ -203,8 +203,9 @@ internal static class ClosedSetTypes
     /// </remarks>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
     {
-        var text = TypeFactory.GetType(SpecialType.String);
-        var boolean = TypeFactory.GetType(SpecialType.Boolean);
+        (IType, bool) text = (TypeFactory.GetType(SpecialType.String), false);
+        (IType, bool) boolean = (TypeFactory.GetType(SpecialType.Boolean), false);
+        (IType, bool) result = (set, true);
         var parsable = TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(set);
         var memberNames = new HashSet<string>(members.Select(member => member.ToDisplayString()));
         var generatedNames = GeneratedNames(set);
@@ -222,7 +223,7 @@ internal static class ClosedSetTypes
                                             .Where(member => member is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && member.Accessibility != Accessibility.Private && generatedNames.Contains(member.Name))
                                             .Select(member => $"{member.ToDisplayString()} in its base type {type.ToDisplayString()}")),
             .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean)))),
-            .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, set) || SameParameters(method, text, boolean, set)))),
+            .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, result) || SameParameters(method, text, boolean, result)))),
             .. Declared(type => type.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count))),
             .. ValueObjectDeclaration.ImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
             .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(parsable)).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
@@ -243,10 +244,15 @@ internal static class ClosedSetTypes
 
     private static bool IsOwn(IMethod method) => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false };
 
-    /// <summary>Parameter types equal, nullability aside: Metalama refuses to introduce a method beside one of the same signature.</summary>
-    private static bool SameParameters(IMethod method, params IType[] types) =>
-        method.Parameters.Count == types.Length
-     && method.Parameters.Select(parameter => parameter.Type.ToNonNullable()).Zip(types, (declared, expected) => declared.Equals(expected.ToNonNullable())).All(same => same);
+    /// <summary>
+    /// Parameter types equal, nullability aside, and each by reference where the generated one is <c>out</c>, in a
+    /// method without type parameters: Metalama refuses to introduce a method beside one of the same signature. A
+    /// generic <c>Parse&lt;T&gt;(string)</c> or a <c>TryParse(string?, TSelf)</c> is another method (#226).
+    /// </summary>
+    private static bool SameParameters(IMethod method, params (IType Type, bool Out)[] parameters) =>
+        method.TypeParameters.Count == 0
+     && method.Parameters.Count == parameters.Length
+     && method.Parameters.Zip(parameters, (declared, expected) => declared.Type.ToNonNullable().Equals(expected.Type.ToNonNullable()) && declared.RefKind != RefKind.None == expected.Out).All(same => same);
 
     /// <summary>The generated <c>Match&lt;TResult&gt;</c>: one <c>Func&lt;TResult&gt;</c> per member.</summary>
     private static bool IsGeneratedMatch(IMethod method, int memberCount) =>
