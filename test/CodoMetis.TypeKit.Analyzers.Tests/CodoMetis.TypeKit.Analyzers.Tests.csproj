@@ -23,4 +23,15 @@
         <PackageReference Include="System.Security.Cryptography.Pkcs" />
     </ItemGroup>
 
+    <!--
+      parallelMode "all": every row of a theory runs in parallel, not only the test classes (xunit.v3 4.x). Each
+      variant sweep is one class of hundreds to thousands of rows, which the default mode ran one after another:
+      DroppedTaskVariantTests alone kept CI's test step going for two to seven minutes after every other test
+      project had finished (#245). Every test here builds its own compilation and shares nothing with another, so
+      none opts out.
+    -->
+    <ItemGroup>
+        <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>

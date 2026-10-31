@@ -277,12 +277,27 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // A seam is kept where the value object declares it. A base record's stood in for the generated member
+        // without a word, so it is refused, naming what to declare instead (#194).
+        var inheritedSeams = ValueObjectDeclaration.InheritedSeams(target, namedValueType, kind);
+
+        if (inheritedSeams.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", inheritedSeams),
+                $"a seam is kept only where the value object declares it, and a base record's would stand in for the generated member without a word; declare it on {target.Name} itself, calling the base's if that is what you mean, or remove it from the base")));
+            return false;
+        }
+
         // The generated code calls {TSelf}.Create(value), which cannot reach an explicit implementation
         // (LAMA0611, CS1929). Refused rather than called through a constrained type parameter: the
         // smaller change, and a public Create is what IValidatedValue documents. Beside a public one, an
         // explicit one is a second rule set: generic code calling T.Create reached it, and every
         // generated entry point the public one. One Create, public, implements the interface too.
-        var (createExplicitly, createCallable) = kind == ValueObjectKind.Validated ? ValueObjectDeclaration.CreateDeclarations(target) : (false, false);
+        // A base record's or an interface's counts (#195). The value object cannot remove it, and declaring the
+        // marker itself makes its own Create the one that implements it.
+        var createDeclaration = "";
+        var createInherited   = false;
+        var (createExplicitly, createCallable) = kind == ValueObjectKind.Validated ? ValueObjectDeclaration.CreateDeclarations(target, marker, out createDeclaration, out createInherited) : (false, false);
 
         if (createExplicitly)
         {
@@ -290,11 +305,15 @@ internal sealed partial class ValueObjectAspect : TypeAspect
 
             builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments(createCallable
                 ? (target,
-                   $"Create both as a static method and as an explicit implementation of {marker.ToDisplayString()}",
-                   $"every generated way in calls {target.Name}.Create and generic code calling T.Create reaches the explicit one, so it would have two rule sets; remove the explicit implementation and keep one Create, {signature}, which implements the interface too")
+                   $"Create both as a static method and as {createDeclaration}",
+                   createInherited
+                       ? $"every generated way in calls {target.Name}.Create and generic code calling T.Create reaches the inherited one, so it would have two rule sets; declare {marker.ToDisplayString()} on {target.Name} itself, so that its own Create implements it"
+                       : $"every generated way in calls {target.Name}.Create and generic code calling T.Create reaches the explicit one, so it would have two rule sets; remove the explicit implementation and keep one Create, {signature}, which implements the interface too")
                 : (target,
-                   $"Create only as an explicit implementation of {marker.ToDisplayString()}",
-                   $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as {signature}")));
+                   $"Create only as {createDeclaration}",
+                   createInherited
+                       ? $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as {signature}, and {marker.ToDisplayString()} on {target.Name} itself, so that it implements it"
+                       : $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as {signature}")));
             return false;
         }
 
