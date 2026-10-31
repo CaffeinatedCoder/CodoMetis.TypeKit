@@ -221,6 +221,15 @@ instead, which works everywhere and may add a cast:
   (`OrderBy(o => o.Priority.Value)`), or order in memory after the query. Equality isn't ordering,
   and stays allowed. A query filter (`HasQueryFilter`, named or not) that does the same fails when
   the model is built, naming the entity type, since it applies to every query of that type.
+- **Your own operator can't run in the database.** EF reads `o.Price + o.Tax` as the database's own
+  addition of the two columns and never calls your `+`. Whatever your operator does beyond that, such
+  as rounding, would be skipped. So a query that uses an arithmetic or bitwise operator you wrote on a
+  value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object. Compute it from `.Value`
+  where the underlying type's arithmetic is what you mean (`o.Price.Value + o.Tax.Value`), or do it in
+  memory after the query. A query filter that uses one fails when the model is built. An operator over
+  values you pass in, which EF computes before the query, stays allowed. The operators TypeKit
+  generates ([Add, subtract and scale](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/value-objects.md#add-subtract-and-scale))
+  are the underlying type's, and work in a query.
 
   One exception: a filter may order values your context holds, without a lambda, as in
   `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a

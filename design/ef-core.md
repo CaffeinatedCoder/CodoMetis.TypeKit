@@ -59,6 +59,12 @@
     model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
     reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
     (measured: `Floor > From(2)` on the context kept the rows memory keeps).
+  - **A hand-written operator is refused in a query (decided 2026-10-30, [decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md)).**
+    EF translates an operator node as the database's arithmetic over its operands and never calls the
+    method, so a hand-written `+` that rounds ran as the plain sum of the columns. The arithmetic aspect
+    marks every operator it generates `[TranslatedAsWrappedArithmetic]`; an interceptor, and a finalizing
+    convention for query filters, refuses any other arithmetic, bitwise or shift operator a value object
+    declares, `&&` and `||` over its `&` and `|` included, naming the value object (#187). A conversion operator is left to EF.
   - **A null passes no comparison in a query (decided 2026-10-15, [decision 98](adr/0098-a-null-passes-no-comparison-in-a-query.md)).**
     A record class's generated operators sort null first, so `null < x` is true in memory, and SQL's
     `"N" < @x` leaves the null row out, as for the underlying type's nullable column. Not refused: a

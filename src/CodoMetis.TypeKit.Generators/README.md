@@ -224,7 +224,11 @@ An arithmetic operator you write is kept as well, and so is an explicit implemen
 interface, yours, a base record's or one an interface of yours supplies. Its `checked` form is then yours too: TypeKit generates neither
 form of that operator, and generates the ones you didn't write. A `checked` operator you write needs the
 plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either. Code
-that wrote these operators by hand before 2.4 builds unchanged. C# allows one operator per pair of operand types, so of two interfaces
+that wrote these operators by hand before 2.4 builds unchanged. A database can't run an operator you
+write, so an EF Core query that uses one is rejected, naming the value object
+([CodoMetis.TypeKit.EntityFrameworkCore](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+The generated ones carry `[TranslatedAsWrappedArithmetic]`, which tells the query they are the
+underlying type's arithmetic. C# allows one operator per pair of operand types, so of two interfaces
 that ask for the same operator, such as `IDivisionOperators<Money, Money, Money>` and
 `IDivisionOperators<Money, Money, decimal>`, only the first is generated, and the second fails the build
 (CS0738) until you implement it explicitly.

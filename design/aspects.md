@@ -16,8 +16,9 @@
   declares, where the wrapped type implements the same interface with the value object replaced by itself,
   each calling the wrapped type's through `GeneratedArithmetic`, a constrained generic call with its context
   stated. A hand-written operator for the same operands, or an explicit implementation of the interface, its
-  own, a base record's or an interface's, is a seam: kept with its `checked` form, never CMTK1011, so code that wrote them on
-  2.3 builds unchanged.
+  own, a base record's or an interface's, is a seam: kept with its `checked` form, never CMTK1011, so code that
+  wrote them on 2.3 builds unchanged. Each generated operator carries `[TranslatedAsWrappedArithmetic]`, which is
+  how an EF Core query tells it from a hand-written one ([decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md)).
 - **Declarations that cannot be generated** are errors, so no type is left half-generated:
   CMTK1000/1001/1002 (not `partial`, not a record, a struct not `readonly`), CMTK1003 (more than one
   marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a

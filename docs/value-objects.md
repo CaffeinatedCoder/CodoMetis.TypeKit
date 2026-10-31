@@ -234,7 +234,9 @@ object or another type, as long as the underlying type has that operator itself.
   object over an `int` throws `OverflowException` there, and wraps around outside it.
 - **In an EF Core query.** An operator between two value objects runs in the database, as it would for
   the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps. One with another operand or
-  result, such as `o.Price * 2m`, throws there for now. Write `o.Price.Value * 2m` instead.
+  result, such as `o.Price * 2m`, throws there for now. Write `o.Price.Value * 2m` instead. An operator
+  you wrote yourself can't run there, so a query that uses it throws, naming the value object
+  ([EF Core, Queries](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
 
 ## Enums, dates and other types
 
