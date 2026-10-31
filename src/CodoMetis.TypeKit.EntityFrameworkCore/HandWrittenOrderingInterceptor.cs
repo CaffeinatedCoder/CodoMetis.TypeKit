@@ -111,7 +111,7 @@ internal static class HandWrittenOrdering
                     foreach (var argument in node.Arguments) Refuse(argument.Type, $"compared with {method.Name}");
                 }
             }
-            else if (IsLinq(method) && OrderedType(method) is { } ordered)
+            else if (IsLinq(method) && OrderedType(method) is { } ordered && !OrderingRunsInMemory(node))
             {
                 Refuse(ordered, $"ordered by {method.Name}");
 
@@ -384,6 +384,15 @@ internal static class HandWrittenOrdering
         /// </summary>
         private bool RunsInMemory(Expression comparison) => skipsWhatRunsInMemory && !DatabaseReads.In(comparison);
 
+        /// <summary>
+        /// Whether EF evaluates an ordering before translating, in a filter: it reads nothing of the database and takes
+        /// no lambda. Over the context's own values EF evaluates <c>Limits.Max()</c> and <c>Limits.Order().First()</c> in
+        /// memory, by <c>CompareTo</c>, but sends <c>Limits</c> to the database as a parameter and orders it there for
+        /// <c>Limits.Max(l =&gt; l)</c> or <c>Limits.OrderByDescending(l =&gt; l).First()</c>, by the column's order
+        /// (measured with EF Core 10 on SQLite, #225). An ordering with a lambda that EF happens to evaluate stays refused.
+        /// </summary>
+        private bool OrderingRunsInMemory(Expression ordering) => RunsInMemory(ordering) && !LambdaFinder.In(ordering);
+
         /// <summary>The type a LINQ operator orders by: the key, the element for <c>Order</c>, the result for <c>Min</c> and <c>Max</c>.</summary>
         private static Type? OrderedType(MethodInfo method) => method.Name switch
         {
@@ -418,6 +427,29 @@ internal static class HandWrittenOrdering
     }
 
     /// <summary>Whether an expression reads a parameter it does not declare itself, or a query.</summary>
+    /// <summary>Whether an expression holds a lambda, quoted or not.</summary>
+    private sealed class LambdaFinder : ExpressionVisitor
+    {
+        private bool _found;
+
+        public static bool In(Expression expression)
+        {
+            var finder = new LambdaFinder();
+            finder.Visit(expression);
+
+            return finder._found;
+        }
+
+        public override Expression? Visit(Expression? node) => _found || node is null ? node : base.Visit(node);
+
+        protected override Expression VisitLambda<T>(Expression<T> node)
+        {
+            _found = true;
+
+            return node;
+        }
+    }
+
     private sealed class DatabaseReads : ExpressionVisitor
     {
         private readonly HashSet<ParameterExpression> _declared = [];

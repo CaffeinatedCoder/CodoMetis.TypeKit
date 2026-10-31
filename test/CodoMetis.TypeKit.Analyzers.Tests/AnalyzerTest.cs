@@ -31,6 +31,20 @@ internal sealed class AnalyzerTest<TAnalyzer> : CSharpAnalyzerTest<TAnalyzer, De
     }
 }
 
+/// <summary>What a sweep over a variant catalogue leaves to the focused tests of its rule.</summary>
+/// <remarks>
+/// The verifier runs a case that expects a diagnostic a second time, under <c>#pragma warning disable</c> for each id
+/// it expects, and checks that nothing is left. Whether a pragma silences a rule is the compiler's, the same for every
+/// shape, so a sweep paid for that pass once per row: 28% of DroppedTaskVariantTests' time (#245). The focused tests
+/// of each rule keep it. The verifier's other pass, under an <c>&lt;auto-generated&gt;</c> header, never runs here:
+/// every analyzer configures generated-code analysis (<c>GeneratedCode.AnalysisFlags</c>), and GeneratedCodeTests
+/// holds what each rule does in generated code.
+/// </remarks>
+internal static class VariantSweep
+{
+    public const TestBehaviors Behaviors = TestBehaviors.SkipSuppressionCheck;
+}
+
 /// <summary>A verifier run of one analyzer and its code fix: the source, then the source as the fix leaves it.</summary>
 internal sealed class CodeFixTest<TAnalyzer, TCodeFix> : CSharpCodeFixTest<TAnalyzer, TCodeFix, DefaultVerifier>
     where TAnalyzer : DiagnosticAnalyzer, new()
