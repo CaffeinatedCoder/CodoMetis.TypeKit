@@ -16,14 +16,18 @@ section is the GitHub release's notes.
 
 - Generators: a plain value object that declares `IAdditionOperators`, `ISubtractionOperators`, `IMultiplyOperators`, `IDivisionOperators`, `IModulusOperators`, `IUnaryNegationOperators` or `IUnaryPlusOperators` gets their operators, `Money + Money` or `Money * 3m`, each the underlying type's own, overflow and `checked` context included; nothing without the interface, nothing on a validated value object, and an operator you wrote is kept ([Add, subtract and scale](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/value-objects.md#add-subtract-and-scale)).
 - EF Core: those operators run in a query as the underlying type's arithmetic on SQLite, PostgreSQL and SQL Server, `o.Price * 2m > limit` and `o.Tax / o.Price` included ([Queries](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+- Generators: every member the generators add carries `[GeneratedMember]` from `CodoMetis.TypeKit.CompilerServices`, naming the interface member it implements, such as `IParsable<OrderId>.Parse`, so code that reads members can tell generated from hand-written without a list of names. A value object's `ToString()` doesn't carry it: Metalama can't put an attribute there.
 
 ### Changed
 
 - Packages: the public surface is checked against 2.3.1's, so nothing 2.3.1 ships is removed or changed in 2.4.0.
 - Analyzers: CMTK0005 now also warns at `CollectionsMarshal.SetCount(ids, count)` on a `List<OrderId>`, which makes room for `count` items without putting one there, as `new OrderId[count]` does; a constant count of zero isn't reported. In a build that treats warnings as errors, that can report code that built before ([CMTK0005](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005)).
 
+- Generators: a property, field or nested type you wrote with the name of a generated member, on the value object, a closed set or a base of either, such as `public static int Parse => 1`, now fails with CMTK1011 naming it, where it failed with a Metalama error (LAMA0506, LAMA0531) that named nothing you wrote. So does a closed set's own method named as a generated property, such as `Name()` ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
+
 ### Fixed
 
+- Generators: an overload that differs from a generated member only by a nullable value type, such as a base record's `TryFrom(int?)` over an `int` or a closed set's `Parse(string, bool?)`, a base record's method named as a generated property, such as `MinValue()`, and an overload of a private entry point are kept beside the generated member, where the build failed with CMTK1011 ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 - EF Core: a query that uses an arithmetic or bitwise operator a value object declares by hand, `&&` and `||` included, throws, naming the value object, where the database ran its own arithmetic and skipped the operator; a query filter fails when the model is built ([Queries](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
 
 ## 2.3.1 — 2026-10-31

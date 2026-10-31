@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.ValueObjects;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 
@@ -78,6 +79,7 @@ internal sealed class ValueObjectCompanionAspect : TypeAspect
                 method.Parameters[0].Type   = builder.Target.ToNonNullable();
                 method.Parameters[0].IsThis = true;
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                method.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IValueObject<,>)).MakeGenericInstance(builder.Target, valueType), nameof(IValueObject<,>.Value)));
                 method.AddAttribute(CodeAnnotations.TranslatedAsWrappedValue);
             }
         );
@@ -95,6 +97,7 @@ internal sealed class ValueObjectCompanionAspect : TypeAspect
                 method.Parameters[0].Type   = builder.Target.ToNullable();
                 method.Parameters[0].IsThis = true;
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                method.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IValueObject<,>)).MakeGenericInstance(builder.Target, valueType), nameof(IValueObject<,>.Value)));
                 method.AddAttribute(CodeAnnotations.TranslatedAsWrappedValue);
             }
         );

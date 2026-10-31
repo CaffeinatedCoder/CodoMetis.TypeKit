@@ -54,6 +54,7 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
             {
                 m.Name = nameof(IConvertible.GetTypeCode);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
+                m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IConvertible)), nameof(IConvertible.GetTypeCode)));
             },
             args: new { referenceType }
         );
@@ -67,6 +68,7 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
             {
                 m.Name = nameof(IConvertible.ToType);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
+                m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IConvertible)), nameof(IConvertible.ToType)));
             },
             args: new { valueObjectType = builder.Target, declaresToString = state.DeclaresToString, referenceType }
         );
@@ -82,6 +84,7 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
             {
                 m.Name = nameof(IConvertible.ToString);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
+                m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IConvertible)), nameof(IConvertible.ToString)));
             },
             args: new { declaresToString = state.DeclaresToString, referenceType }
         );
@@ -101,6 +104,7 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
                     m.Name       = capturedMethodName;
                     m.ReturnType = capturedReturnType.ToNamedType();
                     m.AddAttribute(CodeAnnotations.CompilerGenerated);
+                    m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IConvertible)), capturedMethodName));
                 },
                 args: new
                       {

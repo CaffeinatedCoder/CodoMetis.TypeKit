@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Advising;
 using Metalama.Framework.Aspects;
@@ -110,6 +111,7 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             {
                 c.Accessibility = Accessibility.Private;
                 c.AddAttribute(CodeAnnotations.CompilerGenerated);
+                c.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IClosedSet<>)).WithTypeArguments(target), nameof(IClosedSet<>.All)));
             });
         }
 
@@ -119,12 +121,12 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         {
             f.Accessibility = Accessibility.Private;
             f.InitializerExpression = ExpressionFactory.Parse("null!");
-            f.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.NameField(target).Mark(f);
         });
-        builder.IntroduceProperty(nameof(NameTemplate), buildProperty: p => { p.Name = "Name"; p.Accessibility = Accessibility.Public; p.AddAttribute(CodeAnnotations.CompilerGenerated); });
-        builder.IntroduceProperty(nameof(QualifiedNameTemplate), buildProperty: p => { p.Name = "QualifiedName"; p.Accessibility = Accessibility.Public; p.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        builder.IntroduceProperty(nameof(NameTemplate), buildProperty: p => { p.Accessibility = Accessibility.Public; GeneratedMembers.Name(target).Mark(p); });
+        builder.IntroduceProperty(nameof(QualifiedNameTemplate), buildProperty: p => { p.Accessibility = Accessibility.Public; GeneratedMembers.QualifiedName(target).Mark(p); });
         if (!ClosedSetTypes.DeclaresToString(target))
-            builder.IntroduceMethod(nameof(ToStringTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "ToString"; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+            builder.IntroduceMethod(nameof(ToStringTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => GeneratedMembers.SetToString(target).Mark(m));
 
         builder.AddInitializer(nameof(NamesInitializerTemplate), InitializerKind.BeforeTypeConstructor);
 
@@ -139,47 +141,42 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             f.Type = listType;
             f.Writeability = Writeability.ConstructorOnly;
             f.InitializerExpression = ExpressionFactory.Parse("null!");
-            f.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.AllField(target).Mark(f);
         });
         builder.IntroduceProperty(nameof(AllTemplate), buildProperty: p =>
         {
-            p.Name = "All";
             p.Type = listType;
             p.Accessibility = Accessibility.Public;
             p.IsStatic = true;
-            p.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.All(target).Mark(p);
         });
 
         builder.IntroduceMethod(nameof(TryParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
-            m.Name = "TryParse";
             m.Accessibility = Accessibility.Public;
             m.Parameters[1].Type = target.ToNullable();
-            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.SetTryParse(target, ignoreCase: false).Mark(m);
         });
         builder.IntroduceMethod(nameof(ParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
-            m.Name = "Parse";
             m.Accessibility = Accessibility.Public;
             m.ReturnType = target;
-            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.SetParse(target, ignoreCase: false).Mark(m);
         });
 
         // The same two with ignoreCase, opted into at the call: JSON, the column, binding and
         // IParsable stay ordinal, since what is stored or sent is the name as it is.
         builder.IntroduceMethod(nameof(TryParseIgnoreCaseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
-            m.Name = "TryParse";
             m.Accessibility = Accessibility.Public;
             m.Parameters[2].Type = target.ToNullable();
-            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.SetTryParse(target, ignoreCase: true).Mark(m);
         });
         builder.IntroduceMethod(nameof(ParseIgnoreCaseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
-            m.Name = "Parse";
             m.Accessibility = Accessibility.Public;
             m.ReturnType = target;
-            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.SetParse(target, ignoreCase: true).Mark(m);
         });
 
         // IParsable<TSelf>, explicitly: Parse(string) and TryParse(string, out) are the set's own
@@ -190,22 +187,23 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             m.Name = "Parse";
             m.ReturnType = target;
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(target), nameof(IParsable<>.Parse)));
         });
         parsable.ExplicitMembers.IntroduceMethod(nameof(ParsableTryParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
             m.Name = "TryParse";
             m.Parameters[2].Type = target;
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(target), nameof(IParsable<>.TryParse)));
         });
 
         builder.IntroduceMethod(nameof(MatchTemplate), IntroductionScope.Instance, OverrideStrategy.Fail, m =>
         {
-            m.Name = "Match";
             m.Accessibility = Accessibility.Public;
-            m.AddAttribute(CodeAnnotations.CompilerGenerated);
             var func = m.Parameters[0].Type;
             m.Parameters[0].Name = ClosedSetTypes.ParameterName(members[0]);
             foreach (var member in members.Skip(1)) m.AddParameter(ClosedSetTypes.ParameterName(member), func);
+            GeneratedMembers.Match(target, members.Count).Mark(m);
         });
 
         var converter = builder.IntroduceClass($"{target.Name}JsonConverter", buildType: t =>
@@ -214,7 +212,7 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             t.BaseType = TypeFactory.GetNamedType(typeof(JsonConverter<>)).WithTypeArguments(target);
             t.IsStatic = false;
             t.IsSealed = true;
-            t.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.SetJsonConverter(target).Mark(t);
         });
         converter.IntroduceMethod(nameof(JsonReadTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "Read"; m.ReturnType = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
         converter.IntroduceMethod(nameof(JsonWriteTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "Write"; m.Parameters[1].Type = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
@@ -229,7 +227,7 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             t.BaseType = TypeFactory.GetNamedType(typeof(TypeConverter));
             t.IsStatic = false;
             t.IsSealed = true;
-            t.AddAttribute(CodeAnnotations.CompilerGenerated);
+            GeneratedMembers.SetTypeConverter(target).Mark(t);
         });
         typeConverter.IntroduceMethod(nameof(CanConvertFromTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.CanConvertFrom); m.AddAttribute(CodeAnnotations.CompilerGenerated); });
         typeConverter.IntroduceMethod(nameof(CanConvertToTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.CanConvertTo); m.AddAttribute(CodeAnnotations.CompilerGenerated); });

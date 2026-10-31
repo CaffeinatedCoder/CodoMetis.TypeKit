@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 
@@ -75,7 +76,7 @@ public sealed class GeneratedSurfaceTests
     [
         .. type.GetInterfaces().Select(i => $"implements {Display(i)}"),
         .. type.GetCustomAttributesData().Where(IsDeclared).Select(attribute => $"attribute {Display(attribute.AttributeType)}"),
-        .. type.GetNestedTypes().Select(nested => $"nested {nested.Name} : {string.Join(", ", [Display(nested.BaseType!), .. nested.GetInterfaces().Where(i => !i.IsAssignableFrom(nested.BaseType)).Select(Display)])}"),
+        .. type.GetNestedTypes().Select(nested => $"nested {nested.Name} : {string.Join(", ", [Display(nested.BaseType!), .. nested.GetInterfaces().Where(i => !i.IsAssignableFrom(nested.BaseType)).Select(Display)])}{Generated(nested)}"),
         .. Members(type)
     ];
 
@@ -91,21 +92,28 @@ public sealed class GeneratedSurfaceTests
                 .Where(method => method.IsDefined(typeof(ExtensionAttribute), false)
                               && method.GetParameters()[0].ParameterType is var extended
                               && (extended == valueObject || Nullable.GetUnderlyingType(extended) == valueObject))
-                .Select(method => $"{(method.IsPublic ? "" : "internal ")}static {method.DeclaringType!.Name}.{method.Name}({Parameters(method)}) : {Display(method.ReturnType)}");
+                .Select(method => $"{(method.IsPublic ? "" : "internal ")}static {method.DeclaringType!.Name}.{method.Name}({Parameters(method)}) : {Display(method.ReturnType)}{Generated(method)}");
 
     private static IEnumerable<string> Members(Type type)
     {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
         foreach (var constructor in type.GetConstructors(flags))
-            yield return $"new({Parameters(constructor)})";
+            yield return $"new({Parameters(constructor)}){Generated(constructor)}";
 
         foreach (var property in type.GetProperties(flags))
-            yield return $"{Static(property.GetMethod!)}{property.Name} : {Display(property.PropertyType)}";
+            yield return $"{Static(property.GetMethod!)}{property.Name} : {Display(property.PropertyType)}{Generated(property)}";
 
         foreach (var method in type.GetMethods(flags).Where(method => !method.IsSpecialName || method.Name.StartsWith("op_", StringComparison.Ordinal)))
-            yield return $"{Static(method)}{method.Name}{TypeParameters(method)}({Parameters(method)}) : {Display(method.ReturnType)}";
+            yield return $"{Static(method)}{method.Name}{TypeParameters(method)}({Parameters(method)}) : {Display(method.ReturnType)}{Generated(method)}";
     }
+
+    /// <summary>
+    /// The contract member a generated member names in its <see cref="GeneratedMemberAttribute"/>, so that a
+    /// member the generators introduce without it, or name by another contract, shows up as a diff (decision 128).
+    /// </summary>
+    private static string Generated(MemberInfo member) =>
+        member.GetCustomAttribute<GeneratedMemberAttribute>() is { } generated ? $" [{Display(generated.Contract)}.{generated.Member}]" : "";
 
     /// <summary>
     /// Leaves out the compiler's own bookkeeping (<c>[Nullable]</c>, <c>[IsReadOnly]</c>), which varies

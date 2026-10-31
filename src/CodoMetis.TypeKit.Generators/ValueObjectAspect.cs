@@ -52,12 +52,14 @@ internal sealed partial class ValueObjectAspect : TypeAspect
 
         HideDefaultStructConstructor(builder);
 
+        var marker = ValueObjectTypes.Markers(target)[0];
+
         var valueField = builder.IntroduceField(
             nameof(_value), IntroductionScope.Instance, OverrideStrategy.Fail,
             field =>
             {
                 field.Type = valueType;
-                field.AddAttribute(CodeAnnotations.CompilerGenerated);
+                GeneratedMembers.ValueField(target, valueType).Mark(field);
             }
         );
 
@@ -69,6 +71,7 @@ internal sealed partial class ValueObjectAspect : TypeAspect
                 constructor.InitializerKind    = ConstructorInitializerKind.None;
                 constructor.Parameters[0].Type = valueType;
                 constructor.AddAttribute(CodeAnnotations.CompilerGenerated);
+                constructor.AddAttribute(CodeAnnotations.GeneratedMember(GeneratedMembers.Construction(target, valueType, marker), GeneratedMembers.ConstructionMember(marker)));
                 constructor.AddAttribute(CodeAnnotations.DebuggerStepThrough);
             },
             args: new { valueField = valueField.Declaration }
@@ -78,9 +81,9 @@ internal sealed partial class ValueObjectAspect : TypeAspect
 
         var entryPointArgs = new { constructor = privateConstructor.Declaration, target, kind };
 
-        var fromJson    = IntroduceEntryPoint(builder, nameof(FromJsonTemplate),    "__FromJson",    valueType, entryPointArgs);
-        var fromText    = IntroduceEntryPoint(builder, nameof(FromTextTemplate),    "__FromText",    valueType, entryPointArgs);
-        var tryFromText = IntroduceEntryPoint(builder, nameof(TryFromTextTemplate), "__TryFromText", valueType, entryPointArgs);
+        var fromJson    = IntroduceEntryPoint(builder, nameof(FromJsonTemplate),    GeneratedMembers.FromJson(target, valueType, marker),    valueType, entryPointArgs);
+        var fromText    = IntroduceEntryPoint(builder, nameof(FromTextTemplate),    GeneratedMembers.FromText(target, valueType, marker),    valueType, entryPointArgs);
+        var tryFromText = IntroduceEntryPoint(builder, nameof(TryFromTextTemplate), GeneratedMembers.TryFromText(target, valueType, marker), valueType, entryPointArgs);
 
         builder.AspectState = new ValueObjectAspectState(
             kind,
@@ -147,7 +150,7 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
-        if (ValueObjectDeclaration.GeneratedMemberNames.Contains(target.Name))
+        if (GeneratedMembers.NamesInAnyValueObject(target, marker).Contains(target.Name))
         {
             builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"a value object cannot be named '{target.Name}', the name of a member the generators introduce, since a member cannot have the name of its type; rename it")));
             return false;
@@ -423,8 +426,8 @@ internal sealed partial class ValueObjectAspect : TypeAspect
     /// </summary>
     private static void ImplementMaterializer(IAspectBuilder<INamedType> builder, INamedType valueType, IConstructor privateConstructor)
     {
-        var materializer = builder.ImplementInterface(
-            TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)).MakeGenericInstance(builder.Target, valueType));
+        var contract     = TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)).MakeGenericInstance(builder.Target, valueType);
+        var materializer = builder.ImplementInterface(contract);
 
         materializer.ExplicitMembers.IntroduceMethod(
             nameof(MaterializeTemplate),
@@ -436,19 +439,19 @@ internal sealed partial class ValueObjectAspect : TypeAspect
                 method.ReturnType         = builder.Target;
                 method.Parameters[0].Type = valueType;
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                method.AddAttribute(CodeAnnotations.GeneratedMember(contract, nameof(IValueObjectMaterializer<,>.Materialize)));
             },
             args: new { constructor = privateConstructor }
         );
     }
 
-    private static IMethod IntroduceEntryPoint(IAspectBuilder<INamedType> builder, string template, string name, INamedType valueType, object args) =>
+    private static IMethod IntroduceEntryPoint(IAspectBuilder<INamedType> builder, string template, GeneratedMember entryPoint, INamedType valueType, object args) =>
         builder.IntroduceMethod(
             template,
             IntroductionScope.Static,
             OverrideStrategy.Fail,
             method =>
             {
-                method.Name               = name;
                 method.Accessibility      = Accessibility.Private;
                 method.Parameters[0].Type = valueType;
 
@@ -457,9 +460,9 @@ internal sealed partial class ValueObjectAspect : TypeAspect
                 else
                     method.ReturnType = builder.Target;
 
-                method.AddAttribute(CodeAnnotations.CompilerGenerated);
                 method.AddAttribute(CodeAnnotations.EditorNonBrowsable);
                 method.AddAttribute(CodeAnnotations.DebuggerStepThrough);
+                entryPoint.Mark(method);
             },
             args: args
         ).Declaration;

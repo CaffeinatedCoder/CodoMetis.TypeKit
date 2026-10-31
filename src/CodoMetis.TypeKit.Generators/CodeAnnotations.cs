@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Aspects;
+using Metalama.Framework.Code;
 using Metalama.Framework.Code.DeclarationBuilders;
 
 namespace CodoMetis.TypeKit.Generators;
@@ -37,6 +38,14 @@ internal static class CodeAnnotations
 
     public static AttributeConstruction EditorNonBrowsable =>
         AttributeConstruction.Create(typeof(EditorBrowsableAttribute), [EditorBrowsableState.Never]);
+
+    /// <summary>
+    /// <c>[GeneratedMember(typeof(contract), member)]</c>, on every member the generators introduce. A named member
+    /// gets it from its <see cref="Generators.GeneratedMember"/> entry; what no check finds by name (an explicit
+    /// implementation, an operator, a constructor, a companion's method) gets it here, where it is introduced.
+    /// </summary>
+    public static AttributeConstruction GeneratedMember(IType contract, string member) =>
+        AttributeConstruction.Create(typeof(GeneratedMemberAttribute), [contract, member]);
 
     public static AttributeConstruction TranslatedAsWrappedValue =>
         AttributeConstruction.Create(typeof(TranslatedAsWrappedValueAttribute));

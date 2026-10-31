@@ -207,6 +207,18 @@
     the value object printed what a record prints and a closed set its type name, a generic or by-`in`
     `CompareTo(TSelf)` marked the ordering hand-written, and a generic or by-reference `TryFrom`, `Revalidate`,
     `CompareTo(object)`, `Equals`, `GetHashCode` or `PrintMembers` was CMTK1011 or CMTK1008.
+  - **One identity, and the members read from the aspects (decided 2026-10-31, [decision 128](adr/0128-one-signature-identity-and-a-mark-on-every-generated-member.md)).**
+    Every check of a hand-written member asks `MemberIdentity`: a method of the generated one's signature (name,
+    arity, parameter types without nullable annotations, `Nullable<T>` its own type, by reference or by value), or
+    another kind of member of its name, visible from the value object; a base's method beside a generated property
+    is hidden by it and builds. The named members are `GeneratedMembers` entries, which the aspects introduce through
+    (naming the member, checking its template's signature, marking it) and the checks read, under the aspects' own
+    predicates; the CMTK1005 and CMTK1021 names and the refused interfaces come from them, not from lists. A
+    property or field of a generated method's name, own or a base's, failed the aspect (LAMA0506) and is CMTK1011;
+    a base's `TryFrom(int?)`, a set's `Parse(string, bool?)`, a base's `MinValue()` and an entry point's overload
+    were CMTK1011 and build. Every generated member carries `[GeneratedMember(typeof(Contract), "Member")]`, but the
+    overrides Metalama writes over a record's implicit `ToString()`, `Equals` and `GetHashCode()`, which take no
+    attribute; one written by hand is CMTK1011.
   - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
     A derived record's synthesized equality calls the base's, which compares the base's fields and
     whatever the base declares. A base comparing by reference made two value objects holding 42 unequal
