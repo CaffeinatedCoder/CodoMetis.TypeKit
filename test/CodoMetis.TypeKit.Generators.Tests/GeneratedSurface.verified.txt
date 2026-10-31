@@ -3676,6 +3676,61 @@ OverParsesVirtually
   static op_Inequality(OverParsesVirtually, OverParsesVirtually) : Boolean
   extension static OverParsesVirtuallyExtensions.GetValue(OverParsesVirtually) : IParsesVirtually
   extension static OverParsesVirtuallyExtensions.ValueOrNull(OverParsesVirtually?) : IParsesVirtually
+OverPrivateNames
+  <Clone>$() : OverPrivateNames
+  CompareTo(Object) : Int32
+  CompareTo(OverPrivateNames) : Int32
+  Equals(Object) : Boolean
+  Equals(OverPrivateNames) : Boolean
+  Equals(PrivateNamesBase<OverPrivateNames>) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<OverPrivateNames, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<OverPrivateNames>
+  implements IComparisonOperators<OverPrivateNames, OverPrivateNames, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<OverPrivateNames, OverPrivateNames, Boolean>
+  implements IEquatable<OverPrivateNames>
+  implements IEquatable<PrivateNamesBase<OverPrivateNames>>
+  implements IFormattable
+  implements IMinMaxValue<OverPrivateNames>
+  implements IParsable<OverPrivateNames>
+  implements IPlainValueObject<OverPrivateNames, Int32>
+  implements IReimplementedEquatable<PrivateNamesBase<OverPrivateNames>>
+  implements ISpanFormattable
+  implements ISpanParsable<OverPrivateNames>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<OverPrivateNames>
+  implements IValue<Int32>
+  implements IValueObject<OverPrivateNames, Int32>
+  implements IValueObjectMaterializer<OverPrivateNames, Int32>
+  nested OverPrivateNamesJsonConverter : JsonConverter<OverPrivateNames>, IStoredJsonConverterSource
+  nested OverPrivateNamesTypeConverter : TypeConverter
+  static From(Int32) : OverPrivateNames
+  static MaxValue : OverPrivateNames
+  static MinValue : OverPrivateNames
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : OverPrivateNames
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : OverPrivateNames
+  static Parse(String, IFormatProvider) : OverPrivateNames
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out OverPrivateNames) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out OverPrivateNames) : Boolean
+  static TryParse(String, IFormatProvider, out OverPrivateNames) : Boolean
+  static op_Equality(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_GreaterThan(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_GreaterThanOrEqual(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_Inequality(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_LessThan(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_LessThanOrEqual(OverPrivateNames, OverPrivateNames) : Boolean
+  extension static OverPrivateNamesExtensions.GetValue(OverPrivateNames) : Int32
+  extension static OverPrivateNamesExtensions.ValueOrNull(OverPrivateNames) : Int32?
 OverProbeStatus
   Equals(Object) : Boolean
   Equals(OverProbeStatus) : Boolean
@@ -4746,6 +4801,24 @@ SetOverAnOverloadingBase
   static Parse(String, Boolean) : SetOverAnOverloadingBase
   static TryParse(String, Boolean, out SetOverAnOverloadingBase) : Boolean
   static TryParse(String, out SetOverAnOverloadingBase) : Boolean
+SetOverPrivateNames
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<SetOverPrivateNames>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<SetOverPrivateNames>
+  implements IParsable<SetOverPrivateNames>
+  nested SetOverPrivateNamesJsonConverter : JsonConverter<SetOverPrivateNames>
+  nested SetOverPrivateNamesTypeConverter : TypeConverter
+  static All : IReadOnlyList<SetOverPrivateNames>
+  static Parse(String) : SetOverPrivateNames
+  static Parse(String, Boolean) : SetOverPrivateNames
+  static TryParse(String, Boolean, out SetOverPrivateNames) : Boolean
+  static TryParse(String, out SetOverPrivateNames) : Boolean
 SetWithAGenericToString
   Match<TResult>(Func<TResult>) : TResult
   Name : String
@@ -5556,3 +5629,57 @@ ValidatedOverASeamOverloadingBase
   static op_LessThanOrEqual(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
   extension static ValidatedOverASeamOverloadingBaseExtensions.GetValue(ValidatedOverASeamOverloadingBase) : Int32
   extension static ValidatedOverASeamOverloadingBaseExtensions.ValueOrNull(ValidatedOverASeamOverloadingBase) : Int32?
+ValidatedOverPrivateNames
+  <Clone>$() : ValidatedOverPrivateNames
+  CompareTo(Object) : Int32
+  CompareTo(ValidatedOverPrivateNames) : Int32
+  Equals(Object) : Boolean
+  Equals(PrivateNamesBase<ValidatedOverPrivateNames>) : Boolean
+  Equals(ValidatedOverPrivateNames) : Boolean
+  GetHashCode() : Int32
+  Revalidate() : Result<ValidatedOverPrivateNames, PrivateNamesFault>
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ValidatedOverPrivateNames, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ValidatedOverPrivateNames>
+  implements IComparisonOperators<ValidatedOverPrivateNames, ValidatedOverPrivateNames, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ValidatedOverPrivateNames, ValidatedOverPrivateNames, Boolean>
+  implements IEquatable<PrivateNamesBase<ValidatedOverPrivateNames>>
+  implements IEquatable<ValidatedOverPrivateNames>
+  implements IFormattable
+  implements IParsable<ValidatedOverPrivateNames>
+  implements IReimplementedEquatable<PrivateNamesBase<ValidatedOverPrivateNames>>
+  implements ISpanFormattable
+  implements ISpanParsable<ValidatedOverPrivateNames>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ValidatedOverPrivateNames>
+  implements IValidatedValue<ValidatedOverPrivateNames, Int32, PrivateNamesFault>
+  implements IValueObject<ValidatedOverPrivateNames, Int32>
+  implements IValueObjectMaterializer<ValidatedOverPrivateNames, Int32>
+  nested ValidatedOverPrivateNamesJsonConverter : JsonConverter<ValidatedOverPrivateNames>, IStoredJsonConverterSource
+  nested ValidatedOverPrivateNamesTypeConverter : TypeConverter
+  static Create(Int32) : Result<ValidatedOverPrivateNames, PrivateNamesFault>
+  static FromKnownGood(Int32, String) : ValidatedOverPrivateNames
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ValidatedOverPrivateNames
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ValidatedOverPrivateNames
+  static Parse(String, IFormatProvider) : ValidatedOverPrivateNames
+  static TryFrom(Int32) : Option<ValidatedOverPrivateNames>
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ValidatedOverPrivateNames) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ValidatedOverPrivateNames) : Boolean
+  static TryParse(String, IFormatProvider, out ValidatedOverPrivateNames) : Boolean
+  static op_Equality(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_GreaterThan(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_GreaterThanOrEqual(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_Inequality(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_LessThan(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_LessThanOrEqual(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  extension static ValidatedOverPrivateNamesExtensions.GetValue(ValidatedOverPrivateNames) : Int32
+  extension static ValidatedOverPrivateNamesExtensions.ValueOrNull(ValidatedOverPrivateNames) : Int32?

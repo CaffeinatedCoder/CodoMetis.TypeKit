@@ -156,13 +156,14 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         // A base record's CompareTo(object) failed the aspect (LAMA0500), and its CompareTo(TSelf), the seam, was
         // used without a word: no [HandWrittenOrdering], so EF Core ordered by the column, and the generated
         // operators called the generated CompareTo(object), which C# prefers to the base's, until the stack
-        // overflowed (#194, measured 2026-10-30). The seam is kept where the value object declares it.
+        // overflowed (#194, measured 2026-10-30). The seam is kept where the value object declares it. A base's
+        // private CompareTo is hidden from the value object, so it stands in for nothing (#230).
         foreach (var type in ValueObjectDeclaration.SelfAndBases(target).Skip(1))
         {
             foreach (var method in type.Methods)
             {
                 if (method is { IsStatic: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable.CompareTo), Parameters: [{ } other] }
-                 && ValueObjectDeclaration.IsByValueAndNotGeneric(method) && ValueObjectDeclaration.IsHandWritten(method)
+                 && ValueObjectDeclaration.IsByValueAndNotGeneric(method) && ValueObjectDeclaration.IsHandWritten(method) && method.IsAccessibleFrom(target)
                  && (other.Type.SpecialType == SpecialType.Object || other.Type.ToNonNullable().Equals(target)))
                     yield return $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}";
             }
