@@ -1990,6 +1990,20 @@
     ]
   },
   {
+    "id": "E05-ordering-boxed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "claim": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests",
+      "QueryTranslationVariantTests"
+    ]
+  },
+  {
     "id": "E05-query-filter",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
