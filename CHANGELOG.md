@@ -20,6 +20,10 @@ section is the GitHub release's notes.
 - Generators: a `CompareTo(TSelf)`, `CompareTo(object)`, `TryFrom` or `Revalidate` a value object inherits from a base record now fails the build (CMTK1008, CMTK1011), so your build can fail when you upgrade. It stood in for the generated member: an inherited `CompareTo` made `<` overflow the stack and an EF Core query order by the column, and an inherited `TryFrom` need not run `Create`. Declare it on the value object ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 - Generators: `IValueObject<TSelf, T>`, `IValueObjectMaterializer<TSelf, T>` or `IPlainValueObject<TSelf, T>` declared through an interface of yours, such as an `IEntityId<TSelf> : IValueObject<TSelf, Guid>`, or by a base record now fails with CMTK1011 naming that interface, where it failed with a Metalama error (LAMA0512) that named nothing you wrote. To constrain generic code, use `IValueObject<TSelf, T>` itself ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 
+### Fixed
+
+- OpenAPI: each element of a list, an array or a dictionary of `Patch<T>` is described as a patch property is, the argument's schema admitting null, where it admitted anything ([Use it in an endpoint and in the document](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document)).
+
 ## 2.3.0 — 2026-10-29
 
 ### Added

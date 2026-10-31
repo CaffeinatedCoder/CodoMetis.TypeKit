@@ -3672,6 +3672,45 @@
     ]
   },
   {
+    "id": "P06-element-by-element",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "claim": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-map-of-patches",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "claim": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-containers",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "claim": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
     "id": "P07-default-breaks-the-document",
     "source": "docs/merge-patches.md#required-constructor-parameters",
     "quote": "But System.Text.Json's schema exporter, which ASP.NET Core builds the document with, throws on a parameter of a struct type whose default is `default`. So the endpoint's document fails.",

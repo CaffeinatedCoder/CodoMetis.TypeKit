@@ -7,7 +7,7 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// <summary>
 /// A <see cref="Patch{T}"/> property in the document: its argument's schema, inlined, required only
 /// where the serializer requires it, and admitting null, since the Null state is part of the wire format whatever the
-/// argument is.
+/// argument is. The same for each element of a list or a dictionary of patches.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -32,7 +32,13 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
         options.CreateSchemaReferenceId = type => IsPatch(type.Type) ? null : inner(type);
     }
 
-    private static bool IsPatch(Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Patch<>);
+    private static bool IsPatch(Type type) => Argument(type) is not null;
+
+    /// <summary>The argument of a <see cref="Patch{T}"/>.</summary>
+    private static Type? Argument(Type type) =>
+        type is { IsGenericType: true } patch && patch.GetGenericTypeDefinition() == typeof(Patch<>)
+            ? patch.GetGenericArguments()[0]
+            : null;
 
     /// <summary>
     /// The argument's schema, as it is, with null admitted beside every value it admits.
@@ -89,11 +95,22 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
             }
         }
 
-        if (!IsPatch(info.Type)) return;
+        // A container of patches arrives without its element, as one of value objects does: ASP.NET leaves out
+        // items or additionalProperties for a converter-backed element before any transformer runs. The patch's
+        // own schema is put back, only where it is missing; asked for, it is filled below, as a property's is.
+        if (info.ElementType is { } element && IsPatch(element))
+        {
+            if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
+                schema.Items = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, parameterDescription: null, cancellationToken);
+            else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
+                schema.AdditionalProperties = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, parameterDescription: null, cancellationToken);
+            return;
+        }
+
+        if (Argument(info.Type) is not { } argument) return;
 
         // What the argument is described as comes first, the host's word or a converter's that replaces a
         // value object's generated one, as it does where the argument is a property of its own.
-        var argument = info.Type.GetGenericArguments()[0];
         // The argument is held by the patch alone, where ASP.NET asks no transformer of it: a document and a
         // controller that describe it differently are told apart here.
         DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices, argument, info.Options);

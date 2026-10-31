@@ -194,6 +194,10 @@ OpenAPI 3.1 and 3.0:
 
 A value object inside a patch is described through its underlying type, so `email` is a `string`.
 
+A patch inside a list or a dictionary is described the same way, element by element. So a
+`Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`,
+is an object whose values are a string or `null`.
+
 **Good to know**
 
 - **This isn't ASP.NET Core's JSON Patch** (RFC 6902, `application/json-patch+json`), which is a list
