@@ -62,4 +62,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------------------------------------------------------------
 CMTK0014 | Usage | Warning | UndefinedEnumValueAnalyzer, a FaultKind or ConstructorAccessibility that names no member
 
-## Release 2.3.0
+## Release 2.3.1
