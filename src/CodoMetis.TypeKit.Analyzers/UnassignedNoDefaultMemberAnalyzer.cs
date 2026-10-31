@@ -349,12 +349,15 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        /// <summary><c>this</c>, under any casts: a class reaches its explicit implementations only through one.</summary>
+        /// <summary>
+        /// <c>this</c>, under any casts: a class reaches its explicit implementations only through one. An object
+        /// initializer's receiver is an instance reference too, of the object it creates, not this one.
+        /// </summary>
         private static bool OnThis(IOperation? instance)
         {
             while (instance is IConversionOperation conversion) instance = conversion.Operand;
 
-            return instance is IInstanceReferenceOperation;
+            return instance is IInstanceReferenceOperation { ReferenceKind: InstanceReferenceKind.ContainingTypeInstance };
         }
     }
 }

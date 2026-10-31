@@ -394,6 +394,32 @@ public sealed class UnassignedNoDefaultMemberAnalyzerTests
             Cmtk0006(2, "IHasId.Id", "Plain", "the constructor 'Aliased(Plain)'", AssignAdvice))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// An object initializer or a <c>with</c> inside a constructor sets the new object's member, not this
+    /// one's: its receiver is an implicit instance reference, as <c>this</c> is, and counted as assigning.
+    /// </summary>
+    [Fact]
+    public Task An_initializer_of_another_instance_assigns_nothing_on_this() =>
+        Test(
+            """
+            public sealed class Twin
+            {
+                public Twin() => _ = new Twin(0) { Id = Plain.Make() };
+                public Twin(int _) { Id = Plain.Make(); }
+                public Plain {|#0:Id|} { get; set; }
+            }
+
+            public sealed record Copied
+            {
+                public Copied() => _ = new Copied(0) with { Id = Plain.Make() };
+                public Copied(int _) { Id = Plain.Make(); }
+                public Plain {|#1:Id|} { get; init; }
+            }
+            """,
+            Cmtk0006(0, "Id", "Plain", "the constructor 'Twin()'"),
+            Cmtk0006(1, "Id", "Plain", "the constructor 'Copied()'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task A_compilation_without_TypeKit_is_left_alone() =>
         new AnalyzerTest<UnassignedNoDefaultMemberAnalyzer>("public sealed class S { public int N { get; set; } }", referenceTypeKit: false)
