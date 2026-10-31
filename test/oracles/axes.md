@@ -37,8 +37,8 @@ footprint, it runs with the suite.
 |---|---|---|---|---|
 | JSON | the host's options | defaults, Web, a naming policy, a dictionary-key policy, number handling, a host converter | `JsonParityTests` | reference preservation beside a dictionary key |
 | JSON | the wrapped type | every built-in the generators wrap, nullable or not | `JsonParityTests`, `JsonTests` | |
-| OpenAPI | the version | 3.1, 3.0, 2.0 | `SchemaTests`, `FaultResponseTests` | a withheld fault name under 2.0 |
-| OpenAPI | where value objects are described | components, inlined by `InlineValueObjects`, everything inlined by the host | `SchemaTests`, `NullablePositionTests`, `DescribedParameterTests` | `InlineValueObjects` beside a described type's parameter (`DescribedParameterTests` inlines by the host's own delegate) |
+| OpenAPI | the version | 3.1, 3.0, 2.0 | `SchemaTests`, `FaultResponseTests`, `PatchSchemaTests` | a withheld fault name under 2.0 |
+| OpenAPI | where value objects are described | components, inlined by `InlineValueObjects`, everything inlined by the host | `SchemaTests`, `NullablePositionTests`, `DescribedParameterTests`, `PatchSchemaTests` | `InlineValueObjects` beside a described type's parameter (`DescribedParameterTests` inlines by the host's own delegate) |
 | HTTP | the host | minimal API, MVC with `[ApiController]`, MVC without | `MvcBindingTests`, `FaultStatusScopeTests` | |
 | EF | the provider | SQLite, Npgsql, SQL Server | `KeyGenerationVariantTests`, `QueryTranslationVariantTests` | |
 | EF | where a key sits | `KeyShapes` (`test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/Variants/`) | `KeyGenerationVariantTests` | |

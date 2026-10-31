@@ -215,6 +215,7 @@ public sealed class TypeArgumentConstraintKindTests
     private static Task Run(string subject, string use, bool breaking)
     {
         var test = new AnalyzerTest<TypeArgumentConstraintAnalyzer>(TypeArgumentKinds.Candidates + subject);
+        test.TestBehaviors = VariantSweep.Behaviors;
         test.TestState.Sources.Add(("Use.cs", use));
 
         if (breaking)

@@ -104,7 +104,7 @@ public sealed class GeneratedSurfaceTests
             yield return $"{Static(property.GetMethod!)}{property.Name} : {Display(property.PropertyType)}";
 
         foreach (var method in type.GetMethods(flags).Where(method => !method.IsSpecialName || method.Name.StartsWith("op_", StringComparison.Ordinal)))
-            yield return $"{Static(method)}{method.Name}({Parameters(method)}) : {Display(method.ReturnType)}";
+            yield return $"{Static(method)}{method.Name}{TypeParameters(method)}({Parameters(method)}) : {Display(method.ReturnType)}";
     }
 
     /// <summary>
@@ -116,8 +116,18 @@ public sealed class GeneratedSurfaceTests
 
     private static string Static(MethodBase method) => method.IsStatic ? "static " : "";
 
+    /// <summary>
+    /// A generic method's type parameters, and each parameter's ref kind: a hand-written overload that differs from a
+    /// generated member only by these sits beside it (#226), and the two read as one line without them.
+    /// </summary>
+    private static string TypeParameters(MethodInfo method) =>
+        method.IsGenericMethodDefinition ? $"<{string.Join(", ", method.GetGenericArguments().Select(Display))}>" : "";
+
     private static string Parameters(MethodBase method) =>
-        string.Join(", ", method.GetParameters().Select(parameter => (parameter.IsOut ? "out " : "") + Display(parameter.ParameterType)));
+        string.Join(", ", method.GetParameters().Select(parameter => RefKind(parameter) + Display(parameter.ParameterType)));
+
+    private static string RefKind(ParameterInfo parameter) =>
+        !parameter.ParameterType.IsByRef ? "" : parameter.IsOut ? "out " : parameter.IsIn ? "in " : "ref ";
 
     private static string Display(Type type)
     {

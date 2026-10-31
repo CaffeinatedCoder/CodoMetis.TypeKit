@@ -187,6 +187,23 @@ public readonly partial record struct ProbeSpan : IValue<ProbeSpanText>;
 public abstract record ProbeRecordBase;
 
 /// <summary>
+/// A base record in another assembly whose methods share a generated member's name and parameter types, but are
+/// other methods to C#: a generic <c>Parse</c>, a <c>From</c> that takes its value by <c>in</c>, and a
+/// <c>TryParse</c> whose last parameter is by value. The generated members sit beside them (#226).
+/// </summary>
+public abstract record ProbeOverloadingRecord<TSelf>
+{
+    /// <summary>A generic overload, never the generated <c>Parse</c>.</summary>
+    public static TSelf Parse<TFormat>(string text, IFormatProvider? provider) => throw new NotSupportedException("hand-written");
+
+    /// <summary>An overload by <c>in</c>, never the generated <c>From</c>.</summary>
+    public static TSelf From(in int value) => throw new NotSupportedException("hand-written");
+
+    /// <summary>An overload whose last parameter is by value, never the generated <c>TryParse</c>.</summary>
+    public static bool TryParse(string? text, IFormatProvider? provider, TSelf fallback) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>
 /// A base record in another assembly for the test assembly's value objects, whose sealed
 /// <c>ToString()</c> is the formatting seam: C# keeps it in every derived record.
 /// </summary>
@@ -219,6 +236,50 @@ public abstract record ProbeIdentityRecord
 
     /// <summary>The identity, computed, so it holds nothing of its own.</summary>
     public Guid Identity => _identity;
+}
+
+/// <summary>
+/// An interface in another assembly that implements <c>IFormattable</c> explicitly, which a value object
+/// declaring it in the build-outcome consumer must refuse (CMTK1011). Metalama lists no private member of a
+/// type in another assembly, and an explicit implementation is private, so a check that listed members missed it.
+/// </summary>
+public interface IProbeFormats : IFormattable
+{
+    string IFormattable.ToString(string? format, IFormatProvider? formatProvider) => "***";
+}
+
+/// <summary>The same for <c>IMinMaxValue</c>, a static interface.</summary>
+public interface IProbeBounded<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : IProbeBounded<TSelf>
+{
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new NotSupportedException();
+
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new NotSupportedException();
+}
+
+/// <summary>The same for <c>IComparable</c>, which CMTK1008 refuses.</summary>
+public interface IProbeOrders : IComparable
+{
+    int IComparable.CompareTo(object? obj) => 0;
+}
+
+/// <summary>The same for <c>IClosedSet</c>, on a closed set.</summary>
+public interface IProbeSetNames<TSelf> : IClosedSet<TSelf> where TSelf : class, IProbeSetNames<TSelf>
+{
+    string IClosedSet<TSelf>.Name => "***";
+}
+
+/// <summary>A base record in another assembly that implements <c>IFormattable</c> explicitly, which a value object derived from it must refuse.</summary>
+public abstract record ProbeFormattableRecord : IFormattable
+{
+    string IFormattable.ToString(string? format, IFormatProvider? formatProvider) => "***";
+}
+
+/// <summary>The same for <c>IMinMaxValue</c>, which kept answering the interface.</summary>
+public abstract record ProbeMinMaxRecord<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : ProbeMinMaxRecord<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+{
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new NotSupportedException();
+
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new NotSupportedException();
 }
 
 /// <summary>A closed set with no data and no constructor: the generators add a private one.</summary>

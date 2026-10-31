@@ -12,7 +12,7 @@ The consumer's guide is [docs/closed-sets.md](../docs/closed-sets.md).
 - **Generated:** `Name`, `QualifiedName` (the nesting chain with dots, `Order.Status.Draft`), `All`
   in declaration order, `Match` with one required delegate per member, `TryParse`/`Parse` (ordinal,
   each with an `ignoreCase` overload), `IParsable<TSelf>` explicitly, `ToString()` unless written by
-  hand (the one seam), a nested JSON converter and type converter, `GeneratedClosedSetAttribute<TSet>`
+  hand (the one seam; a base class's `sealed` one counts, one not sealed is refused), a nested JSON converter and type converter, `GeneratedClosedSetAttribute<TSet>`
   for run-time discovery, and a private constructor where none is declared.
 - **Members are singletons.** Equality is reference equality, `Parse` answers the member itself, and
   nothing outside the type can make an instance (CMTK1016, CMTK1017). A record is refused (CMTK1020):
