@@ -2063,10 +2063,37 @@
     ]
   },
   {
+    "id": "E05-ordering-boxed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "claim": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests",
+      "QueryTranslationVariantTests"
+    ]
+  },
+  {
     "id": "E05-query-filter",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
     "claim": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-query-filter-own-values",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
+    "claim": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
     "oracle": "exception",
     "surfaces": [
       "HandWrittenOrderingAttribute.*"
@@ -2530,6 +2557,48 @@
     ],
     "heldBy": [
       "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K05-a-factory-given-a-typeof",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "and so are `Array.CreateInstance` and `Array.CreateInstanceFromArrayType` when a `typeof` names the element, and `ArrayPool<T>.Rent`. A `Type` held in a variable could be anything, so it isn't reported.",
+    "claim": "CMTK0005 reports Array.CreateInstance and Array.CreateInstanceFromArrayType given a typeof of a no-default type, and ArrayPool<T>.Rent of one, and not a Type held in a variable.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K05-a-zero-dimension-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "That holds for any one dimension: `new OrderId[0, count]` holds no element either.",
+    "claim": "CMTK0005 does not report an array whose length is a constant zero in any one of its dimensions.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K06-an-explicit-implementation-through-a-cast",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0006",
+    "quote": "An explicit interface implementation is assigned the only way a class can reach it, through a cast: `((IHasId)this).Id = id` in every constructor keeps it quiet.",
+    "claim": "CMTK0006 counts an assignment through a cast of this, an interface's member as the class's implementation of it, and does not follow a local holding this.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "UnassignedNoDefaultMemberAnalyzerTests"
     ]
   },
   {
@@ -3745,10 +3814,75 @@
     ]
   },
   {
+    "id": "P06-element-by-element",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "claim": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
     "id": "P06-inlined",
     "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
     "quote": "**Inlined**, rather than as a component of its own.",
     "claim": "**Inlined**, rather than as a component of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-map-of-patches",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "claim": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-nullable-patch-reads-null-as-null",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "But System.Text.Json reads a `null` there as a `null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.",
+    "claim": "But System.Text.Json reads a `null` there as a `null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-containers",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "claim": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-nullable-patch",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "A nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch: a `null` there reads as a `null` patch, the same as a property left out.",
+    "claim": "A nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch: a `null` there reads as a `null` patch, the same as a property left out.",
     "oracle": "claim",
     "surfaces": [
       "TypeKitOpenApiOptionsExtensions.AddTypeKit"
