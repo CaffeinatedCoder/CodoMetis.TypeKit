@@ -218,6 +218,7 @@ internal static class ClosedSetTypes
                                                                               .SelectMany(type => MemberIdentity.DeclaredInItsPlace(type, set, generated)
                                                                                                                 .Where(declared => !(declared is IField field && members.Contains(field)))
                                                                                                                 .Select(declared => ValueObjectDeclaration.DescribeDeclared(declared) + (type.Equals(set) ? "" : $" in its base type {type.ToDisplayString()}")))),
+            .. ValueObjectDeclaration.GeneratedMemberAttributesWrittenByHand(set),
             .. ValueObjectDeclaration.ImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
             .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(parsable)).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
             .. set.ImplementedInterfaces.Where(implemented => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(parsable))).Select(implemented => $"the interface {parsable.ToDisplayString()} in its interface {implemented.ToDisplayString()}"),

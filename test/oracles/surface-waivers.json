@@ -9,6 +9,7 @@
   "ClosedSetAttribute..ctor": "a constraint attribute's constructor; what it constrains is CMTK0010's, held by the analyzer tests",
   "GeneratedClosedSetAttribute.*": "plumbing the generators write on a closed set, read by the satellites through Accept",
   "GeneratedValueObjectAttribute.*": "plumbing the generators write on a value object, read by the satellites through Accept",
+  "GeneratedMemberAttribute.*": "plumbing the generators write on every member they introduce, naming its contract; that each carries it and no hand-written one does is GeneratedMemberAttributeTests', and no document promises more yet (decision 128)",
   "GeneratedClosedSets.*": "refusal helpers that generated closed-set code calls; what they refuse is claimed through Parse and the JSON reads",
   "IClosedSetVisitor.Visit": "the visitor GeneratedClosedSetAttribute.Accept calls, plumbing",
   "IValueObjectVisitor.Visit": "the visitor GeneratedValueObjectAttribute.Accept calls, plumbing",

@@ -71,6 +71,7 @@ internal sealed partial class ValueObjectAspect : TypeAspect
                 constructor.InitializerKind    = ConstructorInitializerKind.None;
                 constructor.Parameters[0].Type = valueType;
                 constructor.AddAttribute(CodeAnnotations.CompilerGenerated);
+                constructor.AddAttribute(CodeAnnotations.GeneratedMember(GeneratedMembers.Construction(target, valueType, marker), GeneratedMembers.ConstructionMember(marker)));
                 constructor.AddAttribute(CodeAnnotations.DebuggerStepThrough);
             },
             args: new { valueField = valueField.Declaration }
@@ -438,6 +439,7 @@ internal sealed partial class ValueObjectAspect : TypeAspect
                 method.ReturnType         = builder.Target;
                 method.Parameters[0].Type = valueType;
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                method.AddAttribute(CodeAnnotations.GeneratedMember(contract, nameof(IValueObjectMaterializer<,>.Materialize)));
             },
             args: new { constructor = privateConstructor }
         );

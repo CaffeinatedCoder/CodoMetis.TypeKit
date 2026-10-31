@@ -111,6 +111,7 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             {
                 c.Accessibility = Accessibility.Private;
                 c.AddAttribute(CodeAnnotations.CompilerGenerated);
+                c.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IClosedSet<>)).WithTypeArguments(target), nameof(IClosedSet<>.All)));
             });
         }
 
@@ -186,12 +187,14 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             m.Name = "Parse";
             m.ReturnType = target;
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(target), nameof(IParsable<>.Parse)));
         });
         parsable.ExplicitMembers.IntroduceMethod(nameof(ParsableTryParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
             m.Name = "TryParse";
             m.Parameters[2].Type = target;
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(target), nameof(IParsable<>.TryParse)));
         });
 
         builder.IntroduceMethod(nameof(MatchTemplate), IntroductionScope.Instance, OverrideStrategy.Fail, m =>

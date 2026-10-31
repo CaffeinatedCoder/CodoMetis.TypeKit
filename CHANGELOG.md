@@ -16,6 +16,7 @@ section is the GitHub release's notes.
 
 - Generators: a plain value object that declares `IAdditionOperators`, `ISubtractionOperators`, `IMultiplyOperators`, `IDivisionOperators`, `IModulusOperators`, `IUnaryNegationOperators` or `IUnaryPlusOperators` gets their operators, `Money + Money` or `Money * 3m`, each the underlying type's own, overflow and `checked` context included; nothing without the interface, nothing on a validated value object, and an operator you wrote is kept ([Add, subtract and scale](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/value-objects.md#add-subtract-and-scale)).
 - EF Core: those operators run in a query as the underlying type's arithmetic on SQLite, PostgreSQL and SQL Server, `o.Price * 2m > limit` and `o.Tax / o.Price` included ([Queries](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+- Generators: every member the generators add carries `[GeneratedMember]` from `CodoMetis.TypeKit.CompilerServices`, naming the interface member it implements, such as `IParsable<OrderId>.Parse`, so code that reads members can tell generated from hand-written without a list of names. A value object's `ToString()` doesn't carry it: Metalama can't put an attribute there.
 
 ### Changed
 

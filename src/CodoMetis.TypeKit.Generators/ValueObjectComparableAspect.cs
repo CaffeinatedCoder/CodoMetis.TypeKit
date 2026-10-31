@@ -194,6 +194,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             m.OperatorKind       = operatorKind;
             m.AddAttribute(CodeAnnotations.AggressiveInlining);
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
+            m.AddAttribute(CodeAnnotations.GeneratedMember(TypeFactory.GetNamedType(typeof(IComparisonOperators<,,>)).MakeGenericInstance(builder.Target, builder.Target, TypeFactory.GetNamedType(typeof(bool))), m.Name));
         });
     }
 }

@@ -18,8 +18,8 @@ namespace CodoMetis.TypeKit.Generators;
 /// <para>
 /// Not here: what no check finds by its name. An explicit implementation (the materializer, <c>IConvertible</c>,
 /// a closed set's <c>IParsable&lt;TSelf&gt;</c>) is found by the interface mapping, an operator by its kind, a
-/// constructor by CMTK1009, and the companion class by CMTK1007, each by
-/// its own check. Neither are the members a record
+/// constructor by CMTK1009, and the companion class by CMTK1007; each is marked by
+/// <see cref="CodeAnnotations.GeneratedMember"/> where it is introduced. Neither are the members a record
 /// synthesizes and the generators replace (<c>Equals</c>, <c>GetHashCode</c>), which the equality checks answer.
 /// </para>
 /// <para>

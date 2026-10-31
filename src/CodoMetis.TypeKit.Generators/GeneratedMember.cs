@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 using Metalama.Framework.Code.DeclarationBuilders;
@@ -60,8 +61,8 @@ internal sealed class GeneratedParameter
 
 /// <summary>
 /// One member the generators introduce: its name, kind and signature, which both its introduction and the check
-/// of a hand-written member beside it read, and the contract it implements (decision 128). Made by
-/// <see cref="GeneratedMembers"/>.
+/// of a hand-written member beside it read, and the contract it implements, which
+/// <see cref="GeneratedMemberAttribute"/> names on it (decision 128). Made by <see cref="GeneratedMembers"/>.
 /// </summary>
 [CompileTime]
 internal sealed class GeneratedMember
@@ -149,5 +150,6 @@ internal sealed class GeneratedMember
     private void AddAttributes(IDeclarationBuilder declaration)
     {
         declaration.AddAttribute(CodeAnnotations.CompilerGenerated);
+        declaration.AddAttribute(CodeAnnotations.GeneratedMember(Contract, ContractMember));
     }
 }

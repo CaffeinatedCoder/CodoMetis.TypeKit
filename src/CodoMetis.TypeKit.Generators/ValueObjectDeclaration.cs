@@ -210,6 +210,9 @@ internal static class ValueObjectDeclaration
                         .Distinct()
         ];
 
+        // A hand-written [GeneratedMember] would make a member read as generated to whatever reads the attribute.
+        found.AddRange(GeneratedMemberAttributesWrittenByHand(target));
+
         var parse = ValueObjectParsableAspect.ResolveStrategy(valueType);
 
         // An explicit implementation of an interface the generators implement sat beside the generated
@@ -610,11 +613,23 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// Written by the user, not synthesized by the compiler: a record in a referenced assembly reports its
-    /// synthesized members as declared, and marks them <c>[CompilerGenerated]</c>.
+    /// Written by the user, not synthesized by the compiler nor introduced by the generators: a record in a referenced
+    /// assembly reports its synthesized members as declared, and marks them <c>[CompilerGenerated]</c>, and every
+    /// member the generators introduce carries <see cref="GeneratedMemberAttribute"/> (decision 128).
     /// </summary>
     internal static bool IsHandWritten(IMember member) =>
-        !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
+        !member.IsImplicitlyDeclared
+     && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))) || attribute.Type.Equals(TypeFactory.GetNamedType(typeof(GeneratedMemberAttribute))));
+
+    /// <summary>
+    /// The members of <paramref name="target"/> that carry a <see cref="GeneratedMemberAttribute"/> before anything is
+    /// introduced, which can only have been written by hand: it would make the member read as generated to whatever
+    /// reads the attribute, as the generators' own attributes on the type would (CMTK1011).
+    /// </summary>
+    internal static IEnumerable<string> GeneratedMemberAttributesWrittenByHand(INamedType target) =>
+        target.Fields.Concat<IMemberOrNamedType>(target.Properties).Concat(target.Events).Concat(target.Methods).Concat(target.Constructors).Concat(target.Types)
+              .Where(member => member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(GeneratedMemberAttribute)))))
+              .Select(member => $"the attribute GeneratedMember on {(member is IMember declared ? Describe(declared) : member.ToDisplayString())}");
 
     /// <summary>A hand-written member that takes a generated one's place, as an error names it.</summary>
     internal static string DescribeDeclared(IMemberOrNamedType declared) =>

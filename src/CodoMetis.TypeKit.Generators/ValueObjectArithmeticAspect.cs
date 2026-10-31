@@ -159,6 +159,7 @@ internal sealed partial class ValueObjectArithmeticAspect : TypeAspect
                         method.ReturnType   = result;
                         method.OperatorKind = kind;
                         method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                        method.AddAttribute(CodeAnnotations.GeneratedMember(declared, method.Name));
 
                         // What tells an EF Core query this operator from one written by hand, which it refuses.
                         method.AddAttribute(CodeAnnotations.TranslatedAsWrappedArithmetic);

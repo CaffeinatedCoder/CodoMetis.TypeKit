@@ -369,6 +369,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("OverTryFormatFieldBase", "TryFormatFieldBase.TryFormat in its base type TryFormatFieldBase")]
     [InlineData("TryFromAsProperty", "TryFromAsProperty.TryFrom")]
     [InlineData("CompareToAsField", "CompareToAsField.CompareTo")]
+    [InlineData("MarkedByHand", "the attribute GeneratedMember on MarkedByHand.Hidden()")]
     [InlineData("TryFormatByRef", "TryFormatByRef.TryFormat(Span<char>, ref int, ReadOnlySpan<char>, IFormatProvider?)")]
     [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
     [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
@@ -2044,6 +2045,13 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             }
 
             public readonly partial record struct CompareToAsField : IValue<int> { public static int CompareTo = 1; }
+
+            // A [GeneratedMember] written by hand would make the member read as generated.
+            public readonly partial record struct MarkedByHand : IValue<int>
+            {
+                [CodoMetis.TypeKit.CompilerServices.GeneratedMember(typeof(IValue<int>), "Hidden")]
+                public static int Hidden() => 1;
+            }
 
             // What C#'s overloading and hiding keep apart from a generated member, which builds beside it (decision 128).
             public abstract record NullableTryFromBase { public static Option<OverNullableTryFromBase> TryFrom(int? value) => Option.None(); }
