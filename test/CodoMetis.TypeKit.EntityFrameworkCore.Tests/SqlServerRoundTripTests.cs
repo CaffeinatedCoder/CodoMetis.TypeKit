@@ -12,7 +12,12 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
 /// and what SQL Server does differently from memory (design/knowledge KB-048 to KB-054) a value object does as the
 /// type it wraps does.
 /// </summary>
+/// <remarks>
+/// Its tests run one at a time: each creates the same tables in the one database <c>typekit_round_trips</c>, which
+/// the project's parallel mode would race ("There is already an object named 'Customers'", #251).
+/// </remarks>
 [Collection(SqlServerCollection.Name)]
+[TestClass(DisableParallelization = true)]
 [Trait("Needs", "Docker")]
 public sealed class SqlServerRoundTripTests(SqlServer server)
 {
