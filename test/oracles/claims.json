@@ -2433,6 +2433,20 @@
     ]
   },
   {
+    "id": "K05-a-factory-given-a-typeof",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "and so are `Array.CreateInstance` and `Array.CreateInstanceFromArrayType` when a `typeof` names the element, and `ArrayPool<T>.Rent`. A `Type` held in a variable could be anything, so it isn't reported.",
+    "claim": "CMTK0005 reports Array.CreateInstance and Array.CreateInstanceFromArrayType given a typeof of a no-default type, and ArrayPool<T>.Rent of one, and not a Type held in a variable.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
     "id": "K05-a-zero-dimension-is-silent",
     "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
     "quote": "That holds for any one dimension: `new OrderId[0, count]` holds no element either.",

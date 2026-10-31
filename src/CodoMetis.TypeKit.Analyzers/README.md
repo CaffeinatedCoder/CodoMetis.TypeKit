@@ -302,7 +302,9 @@ OrderId[] kept = [.. rows.Select(r => OrderId.From(r.Id))];   // built from valu
 ```
 
 `stackalloc`, `GC.AllocateUninitializedArray`, `GC.AllocateArray` and `Array.Resize` are reported
-too. `Array.Resize` adds default slots whenever the new size is larger, which the rule can't tell. A
+too, and so are `Array.CreateInstance` and `Array.CreateInstanceFromArrayType` when a `typeof` names
+the element, and `ArrayPool<T>.Rent`. A `Type` held in a variable could be anything, so it isn't
+reported. `Array.Resize` adds default slots whenever the new size is larger, which the rule can't tell. A
 constant length or size of zero creates no slot, as `new OrderId[0]` doesn't, and isn't reported. That
 holds for any one dimension: `new OrderId[0, count]` holds no element either.
 
