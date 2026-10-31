@@ -71,6 +71,87 @@ public sealed partial record MaskedOverALocalRecord : LocalMaskingRecord, IValue
 /// <summary>Over a sealed <c>ToString()</c> in another assembly.</summary>
 public sealed partial record MaskedOverALibraryRecord : ProbeMaskingRecord, IValue<string>;
 
+/// <summary>A base class in this assembly whose <c>ToString()</c> is sealed.</summary>
+public abstract class LocalMaskingSetBase
+{
+    /// <summary>What every derived class prints.</summary>
+    public sealed override string ToString() => "***";
+}
+
+/// <summary>A closed set over a sealed <c>ToString()</c>, which failed the aspect (LAMA0502, #205).</summary>
+public sealed partial class MaskedSet : LocalMaskingSetBase, CodoMetis.TypeKit.ClosedSets.IClosedSet<MaskedSet>
+{
+    /// <summary>The first member.</summary>
+    public static readonly MaskedSet Open = new();
+
+    /// <summary>The second member.</summary>
+    public static readonly MaskedSet Closed = new();
+}
+
+/// <summary>
+/// A base record whose private members have the generated members' names and signatures. C# hides them from a
+/// derived record, so they stand in for nothing: 2.3.0 generated the value object beside them, and 2.3.1's
+/// base-record checks refused it (CMTK1011, CMTK1008, #230).
+/// </summary>
+public abstract record PrivateNamesBase<TSelf> where TSelf : notnull
+{
+    private static int MaxValue => 100;
+    private static int MinValue => 0;
+    private int Value => -1;
+    private static TSelf From(int value) => throw new NotSupportedException("hidden");
+    private static TSelf Parse(string text, IFormatProvider? provider) => throw new NotSupportedException("hidden");
+    private static bool TryParse(string? text, IFormatProvider? provider, out TSelf result) => throw new NotSupportedException("hidden");
+    private static TSelf Parse(ReadOnlySpan<char> text, IFormatProvider? provider) => throw new NotSupportedException("hidden");
+    private static bool TryParse(ReadOnlySpan<byte> text, IFormatProvider? provider, out TSelf result) => throw new NotSupportedException("hidden");
+    private string ToString(string? format, IFormatProvider? provider) => "hidden";
+    private bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) => throw new NotSupportedException("hidden");
+    private int CompareTo(object? other) => 0;
+    private int CompareTo(TSelf? other) => 0;
+    private static Option<TSelf> TryFrom(int value) => throw new NotSupportedException("hidden");
+    private Result<TSelf, PrivateNamesFault> Revalidate() => throw new NotSupportedException("hidden");
+
+    /// <summary>What the base uses its private members for.</summary>
+    protected bool InRange(int value) => value >= MinValue && value <= MaxValue && Value < 0 && CompareTo(null) == 0 && ToString(null, null) == "hidden";
+}
+
+/// <summary>Why a value object over <see cref="PrivateNamesBase{TSelf}"/> is refused.</summary>
+public enum PrivateNamesFault
+{
+    /// <summary>Below zero.</summary>
+    Negative
+}
+
+/// <summary>A plain value object over a base record's private members of generated names.</summary>
+public sealed partial record OverPrivateNames : PrivateNamesBase<OverPrivateNames>, IValue<int>;
+
+/// <summary>A validated value object over a base record's private <c>TryFrom</c> and <c>Revalidate</c>.</summary>
+public sealed partial record ValidatedOverPrivateNames : PrivateNamesBase<ValidatedOverPrivateNames>, IValidatedValue<ValidatedOverPrivateNames, int, PrivateNamesFault>
+{
+    /// <summary>Zero or more.</summary>
+    public static Result<ValidatedOverPrivateNames, PrivateNamesFault> Create(int value) => value < 0 ? Result.Error(PrivateNamesFault.Negative) : new ValidatedOverPrivateNames(value);
+}
+
+/// <summary>A base class whose private members have a closed set's generated names and signatures (#230).</summary>
+public abstract class PrivateSetNamesBase<TSelf>
+{
+    private static TSelf Parse(string name) => throw new NotSupportedException("hidden");
+    private static bool TryParse(string? name, out TSelf member) => throw new NotSupportedException("hidden");
+    private TResult Match<TResult>(Func<TResult> first, Func<TResult> second) => throw new NotSupportedException("hidden");
+
+    /// <summary>What the base uses its private members for.</summary>
+    protected static bool Parses(string name) => TryParse(name, out _) || Parse(name) is not null || ((PrivateSetNamesBase<TSelf>)null!).Match(() => 0, () => 1) == 0;
+}
+
+/// <summary>A closed set over a base class's private members of generated names.</summary>
+public sealed partial class SetOverPrivateNames : PrivateSetNamesBase<SetOverPrivateNames>, CodoMetis.TypeKit.ClosedSets.IClosedSet<SetOverPrivateNames>
+{
+    /// <summary>The first member.</summary>
+    public static readonly SetOverPrivateNames First = new();
+
+    /// <summary>The second member.</summary>
+    public static readonly SetOverPrivateNames Second = new();
+}
+
 /// <summary>
 /// What a value object inherits from a base record. Refusals are build errors and live in
 /// <see cref="BuildOutcomeTests"/>; this is what is generated.
@@ -184,5 +265,68 @@ public sealed class InheritedMembersTests
 
         JsonSerializer.Serialize(value, value.GetType()).ShouldBe("\"SECRET\"");
         TypeDescriptor.GetConverter(value.GetType()).ConvertToInvariantString(value).ShouldBe("SECRET");
+    }
+
+    /// <summary>
+    /// A base record's private members stand in for nothing: every generated member is there, and is what a call
+    /// on the value object reaches (#230).
+    /// </summary>
+    [Fact]
+    public void A_base_record_s_private_members_of_generated_names_are_hidden()
+    {
+        OverPrivateNames.MaxValue.Value.ShouldBe(int.MaxValue);
+        OverPrivateNames.MinValue.Value.ShouldBe(int.MinValue);
+        OverPrivateNames.From(7).Value.ShouldBe(7);
+        OverPrivateNames.Parse("7", null).ShouldBe(OverPrivateNames.From(7));
+        OverPrivateNames.TryParse("7", null, out var parsed).ShouldBeTrue();
+        parsed.ShouldBe(OverPrivateNames.From(7));
+        OverPrivateNames.Parse("7".AsSpan(), null).ShouldBe(OverPrivateNames.From(7));
+        OverPrivateNames.TryParse("7"u8, null, out var utf8).ShouldBeTrue();
+        utf8.ShouldBe(OverPrivateNames.From(7));
+        OverPrivateNames.From(7).ToString("D3", null).ShouldBe("007");
+
+        Span<char> buffer = stackalloc char[8];
+        OverPrivateNames.From(7).TryFormat(buffer, out var written, "D3", null).ShouldBeTrue();
+        buffer[..written].ToString().ShouldBe("007");
+
+        (OverPrivateNames.From(1) < OverPrivateNames.From(2)).ShouldBeTrue();
+        OverPrivateNames.From(1).CompareTo((object)OverPrivateNames.From(2)).ShouldBeLessThan(0);
+        typeof(OverPrivateNames).IsDefined(typeof(CodoMetis.TypeKit.CompilerServices.HandWrittenOrderingAttribute), inherit: false).ShouldBeFalse();
+    }
+
+    /// <summary>A base record's private <c>TryFrom</c> and <c>Revalidate</c> are no seams: the generated ones run <c>Create</c> (#230).</summary>
+    [Fact]
+    public void A_base_record_s_private_TryFrom_and_Revalidate_are_hidden()
+    {
+        ValidatedOverPrivateNames.TryFrom(50).IsSome().ShouldBeTrue();
+        ValidatedOverPrivateNames.TryFrom(-1).IsNone().ShouldBeTrue();
+        ValidatedOverPrivateNames.FromKnownGood(50).Revalidate().TryGetValue(out var revalidated, out _).ShouldBeTrue();
+        revalidated.ShouldBe(ValidatedOverPrivateNames.FromKnownGood(50));
+    }
+
+    /// <summary>A base class's private <c>Parse</c>, <c>TryParse</c> and <c>Match</c> are hidden from a closed set too (#230).</summary>
+    [Fact]
+    public void A_closed_set_s_base_class_s_private_members_of_generated_names_are_hidden()
+    {
+        SetOverPrivateNames.Parse("Second").ShouldBeSameAs(SetOverPrivateNames.Second);
+        SetOverPrivateNames.TryParse("First", out var member).ShouldBeTrue();
+        member.ShouldBeSameAs(SetOverPrivateNames.First);
+        SetOverPrivateNames.Second.Match(first: () => 1, second: () => 2).ShouldBe(2);
+    }
+
+    /// <summary>
+    /// A base class's sealed <c>ToString()</c> is a closed set's seam too (#205): it is what the set prints, while
+    /// its name, parsing and JSON are generated as usual.
+    /// </summary>
+    [Fact]
+    public void A_sealed_ToString_in_a_closed_set_s_base_class_is_the_seam()
+    {
+        MaskedSet.Closed.ToString().ShouldBe("***");
+        $"{MaskedSet.Closed}".ShouldBe("***");
+
+        MaskedSet.Closed.Name.ShouldBe("Closed");
+        MaskedSet.All.ShouldBe([MaskedSet.Open, MaskedSet.Closed]);
+        MaskedSet.Parse("Closed").ShouldBeSameAs(MaskedSet.Closed);
+        JsonSerializer.Serialize(MaskedSet.Closed).ShouldBe("\"Closed\"");
     }
 }
