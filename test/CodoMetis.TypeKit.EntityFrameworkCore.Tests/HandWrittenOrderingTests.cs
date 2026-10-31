@@ -67,6 +67,18 @@ public sealed class HandWrittenOrderingTests : IDisposable
         ["OrderBy a coalesced boxed member"]              = db => db.Ranked.Select(r => new { Key = (object?)r.Optional ?? r.Rank }).OrderBy(a => a.Key).ToList(),
         ["Max of a boxed member over a navigation"]       = db => db.Parents.Select(p => p.Children.Select(c => new { Key = (object)c.Rank }).Max(a => a.Key)).ToList(),
 
+        // The boxed value reaching the ordering through another operator's lambda: each answered 1, 2, 3 (Max 3) where
+        // memory answers 3, 2, 1 (Max 1), measured at d573eef.
+        ["OrderBy a grouping's boxed key"]                = db => db.Ranked.GroupBy(r => (object)r.Rank).OrderBy(g => g.Key).Select(g => g.Key).ToList(),
+        ["Max of a grouping's boxed elements"]            = db => db.Ranked.GroupBy(r => r.Id % 1, r => (object)r.Rank).Select(g => g.Max()).ToList(),
+        ["OrderBy a GroupBy result's boxed key"]          = db => db.Ranked.GroupBy(r => r.Rank, (k, g) => new { Key = (object)k }).OrderBy(a => a.Key).ToList(),
+        ["OrderBy a Join result's boxed member"]          = db => db.Ranked.Join(db.Ranked, a => a.Id, b => b.Id, (a, b) => new { Key = (object)b.Rank }).OrderBy(x => x.Key).ToList(),
+        ["OrderBy a GroupJoin result's boxed member"]     = db => db.Parents.GroupJoin(db.Set<RankChild>(), p => p.Id, c => c.ParentId, (p, cs) => new { Key = (object)cs.First().Rank }).OrderBy(x => x.Key).ToList(),
+        ["OrderBy a SelectMany result's boxed member"]    = db => db.Parents.SelectMany(p => p.Children, (p, c) => new { Key = (object)c.Rank }).OrderBy(x => x.Key).ToList(),
+        ["Max of boxed values through SelectMany"]        = db => db.Parents.SelectMany(p => p.Children.Select(c => (object)c.Rank)).Max()!,
+        ["OrderBy a subquery's boxed First"]              = db => db.Ranked.OrderBy(r => db.Ranked.Where(x => x.Id == r.Id).Select(x => (object)x.Rank).First()).ToList(),
+        ["OrderBy a navigation's boxed FirstOrDefault"]   = db => db.Ranked.OrderBy(r => db.Parents.SelectMany(p => p.Children).Where(c => c.Id == r.Id).Select(c => (object)c.Rank).FirstOrDefault()).ToList(),
+
         // The database's own GREATEST and LEAST (SQLite's max and min) order by the column: the first answered
         // 2, 2, 3 where memory's order answers 1, 1, 2 (measured on PostgreSQL 17 before the refusal).
         ["Greatest"]               = db => db.Ranked.Select(r => EF.Functions.Greatest(r.Rank, Two)).ToList(),
@@ -161,6 +173,10 @@ public sealed class HandWrittenOrderingTests : IDisposable
         db.Ranked.Select(r => new { Key = (object)r.Count }).OrderBy(a => a.Key).Select(a => a.Key).ToList()
                  .ShouldBe([ProbeCount.From(1), ProbeCount.From(2), ProbeCount.From(3)]);
         db.Ranked.OrderBy(r => (object?)r.Count ?? r.Rank.Value).Select(r => r.Rank.Value).ToList().ShouldBe([1, 2, 3]);
+        db.Ranked.GroupBy(r => (object)r.Rank.Value).OrderBy(g => g.Key).Select(g => g.Key).ToList().ShouldBe([1, 2, 3]);
+        db.Ranked.Join(db.Ranked, a => a.Id, b => b.Id, (a, b) => new { Key = (object)b.Count }).OrderBy(x => x.Key).Select(x => x.Key).ToList()
+                 .ShouldBe([ProbeCount.From(1), ProbeCount.From(2), ProbeCount.From(3)]);
+        db.Ranked.OrderBy(r => db.Ranked.Where(x => x.Id == r.Id).Select(x => (object)x.Rank.Value).First()).Select(r => r.Rank.Value).ToList().ShouldBe([1, 2, 3]);
 
         db.Parents.Select(p => p.Children.OrderByDescending(c => c.Rank.Value).Select(c => c.Rank.Value).First()).ToList().ShouldBe([3]);
         db.Parents.Select(p => p.Children.Max(c => c.Rank.Value)).ToList().ShouldBe([3]);
