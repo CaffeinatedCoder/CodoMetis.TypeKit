@@ -54,7 +54,7 @@ internal static class ValueObjectDeclaration
     }
 
     private static bool IsHandWrittenToString(IMethod method) =>
-        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsHandWritten(method);
+        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsByValueAndNotGeneric(method) && IsHandWritten(method);
 
     /// <summary>
     /// A value object and the records it derives from, <see cref="object"/> left out. A struct has
@@ -210,12 +210,15 @@ internal static class ValueObjectDeclaration
 
         if (kind == ValueObjectKind.Plain)
         {
-            found.AddRange(Declared(type => MethodsWithSignature(type, "From", valueType)));
+            found.AddRange(Declared(type => MethodsWithSignature(type, "From", (valueType, false))));
             found.AddRange(Declared(type => MembersNamed(type, methods: false, "From")));
         }
 
-        var stringType = TypeFactory.GetType(SpecialType.String);
-        var provider   = TypeFactory.GetType(typeof(IFormatProvider));
+        // A generated method's parameters, and whether each is out: an overload that takes one by value where the
+        // generated one takes it by reference, or the other way round, is another method (#226).
+        (IType, bool) stringType = (TypeFactory.GetType(SpecialType.String), false);
+        (IType, bool) provider   = (TypeFactory.GetType(typeof(IFormatProvider)), false);
+        (IType, bool) result     = (target, true);
 
         // ValueObjectParsableAspect and, where parsing is generated, ValueObjectTypeConverterAspect.
         var parse = ValueObjectParsableAspect.ResolveStrategy(valueType);
@@ -223,7 +226,7 @@ internal static class ValueObjectDeclaration
         if (parse != ValueParseStrategy.Unsupported)
         {
             found.AddRange(Declared(type => MethodsWithSignature(type, "Parse", stringType, provider)));
-            found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", stringType, provider, target)));
+            found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", stringType, provider, result)));
             found.AddRange(Declared(type => MembersNamed(type, $"{target.Name}TypeConverter")));
             generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IParsable<>)));
 
@@ -231,18 +234,18 @@ internal static class ValueObjectDeclaration
             {
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanParsable<>)));
 
-                var span = TypeFactory.GetType(typeof(ReadOnlySpan<char>));
+                (IType, bool) span = (TypeFactory.GetType(typeof(ReadOnlySpan<char>)), false);
                 found.AddRange(Declared(type => MethodsWithSignature(type, "Parse", span, provider)));
-                found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", span, provider, target)));
+                found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", span, provider, result)));
             }
 
             if (ValueObjectParsableAspect.SupportsUtf8(valueType))
             {
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanParsable<>)));
 
-                var utf8 = TypeFactory.GetType(typeof(ReadOnlySpan<byte>));
+                (IType, bool) utf8 = (TypeFactory.GetType(typeof(ReadOnlySpan<byte>)), false);
                 found.AddRange(Declared(type => MethodsWithSignature(type, "Parse", utf8, provider)));
-                found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", utf8, provider, target)));
+                found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", utf8, provider, result)));
             }
         }
 
@@ -254,13 +257,13 @@ internal static class ValueObjectDeclaration
 
             if (ValueObjectFormattableAspect.ResolveStrategy(valueType) == ValueFormatStrategy.SpanFormattable)
             {
-                found.AddRange(Declared(type => MethodsWithSignature(type, nameof(ISpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<char>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider)));
+                found.AddRange(Declared(type => MethodsWithSignature(type, nameof(ISpanFormattable.TryFormat), (TypeFactory.GetType(typeof(Span<char>)), false), (TypeFactory.GetType(SpecialType.Int32), true), (TypeFactory.GetType(typeof(ReadOnlySpan<char>)), false), provider)));
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanFormattable)));
             }
 
             if (ValueObjectFormattableAspect.SupportsUtf8(valueType))
             {
-                found.AddRange(Declared(type => MethodsWithSignature(type, nameof(IUtf8SpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<byte>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider)));
+                found.AddRange(Declared(type => MethodsWithSignature(type, nameof(IUtf8SpanFormattable.TryFormat), (TypeFactory.GetType(typeof(Span<byte>)), false), (TypeFactory.GetType(SpecialType.Int32), true), (TypeFactory.GetType(typeof(ReadOnlySpan<char>)), false), provider)));
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanFormattable)));
             }
         }
@@ -436,7 +439,7 @@ internal static class ValueObjectDeclaration
         kind != ValueObjectKind.Validated
             ? []
             : [.. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
-                                                                     .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation
+                                                                     .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation && IsByValueAndNotGeneric(method)
                                                                                    && (method is { Name: "TryFrom", IsStatic: true, Parameters: [{ } value] } && value.Type.ToNonNullable().Equals(valueType.ToNonNullable())
                                                                                     || method is { Name: "Revalidate", IsStatic: false, Parameters.Count: 0 }))
                                                                      .Select(method => $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}"))];
@@ -510,7 +513,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. SelfAndBases(target).SelectMany(type => type.Methods
-                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsHandWritten(method))
+                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsByValueAndNotGeneric(method) && IsHandWritten(method))
                                                            .Select(method => Describe(method) + (type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}")))
         ];
     }
@@ -537,7 +540,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. target.Methods
-                     .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false }
+                     .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false } && IsByValueAndNotGeneric(method)
                                    && (method.IsExplicitInterfaceImplementation
                                            ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
                                            : (method is { Name: nameof(Equals), Parameters: [{ } other] } && ownTypes.Any(type => other.Type.ToNonNullable().Equals(type)))
@@ -565,7 +568,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
-                                                                   .Where(method => method is { IsStatic: false } && IsHandWritten(method)
+                                                                   .Where(method => method is { IsStatic: false } && IsByValueAndNotGeneric(method) && IsHandWritten(method)
                                                                                  && (method.IsExplicitInterfaceImplementation
                                                                                          ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
                                                                                          : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(type))
@@ -646,6 +649,15 @@ internal static class ValueObjectDeclaration
     internal static bool IsHandWritten(IMember member) =>
         !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
 
+    /// <summary>
+    /// A method without type parameters whose parameters are all by value, as every generated method is but
+    /// <c>TryParse</c> and <c>TryFormat</c> (<see cref="MethodsWithSignature"/>): C# overloads by arity and by a
+    /// parameter's ref kind, so a generic <c>CompareTo&lt;T&gt;(object?)</c> or a <c>TryFrom(in int)</c> is another
+    /// method, which the generated one sits beside, and no seam (#226).
+    /// </summary>
+    internal static bool IsByValueAndNotGeneric(IMethod method) =>
+        method.TypeParameters.Count == 0 && method.Parameters.All(parameter => parameter.RefKind == RefKind.None);
+
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);
 
@@ -678,11 +690,18 @@ internal static class ValueObjectDeclaration
     /// whatever they return: a generated member with that signature is either refused by Metalama or
     /// skipped in favour of the hand-written one.
     /// </summary>
-    private static IEnumerable<string> MethodsWithSignature(INamedType target, string name, params IType[] parameters) =>
+    /// <remarks>
+    /// The signature C# overloads by (#226): no type parameters, as the generated method has none, and each
+    /// parameter by reference where the generated one is <c>out</c>, by value where it is by value. A generic
+    /// <c>Parse&lt;TFormat&gt;(string, IFormatProvider?)</c>, a <c>From(in int)</c> and a <c>TryParse</c> whose
+    /// last parameter is by value are other methods, which the generated ones sit beside. <c>ref</c> or <c>in</c>
+    /// against <c>out</c> is no overload in C# (CS0663), so it is the same method, as nullability is.
+    /// </remarks>
+    private static IEnumerable<string> MethodsWithSignature(INamedType target, string name, params (IType Type, bool Out)[] parameters) =>
         target.Methods
-              .Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false }
+              .Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, TypeParameters.Count: 0 }
                             && method.Name == name
                             && method.Parameters.Count == parameters.Length
-                            && method.Parameters.Select(parameter => parameter.Type).Zip(parameters, (declared, expected) => declared.Equals(expected)).All(same => same))
+                            && method.Parameters.Zip(parameters, (declared, expected) => declared.Type.Equals(expected.Type) && declared.RefKind != RefKind.None == expected.Out).All(same => same))
               .Select(method => method.ToDisplayString());
 }

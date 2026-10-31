@@ -101,7 +101,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             if (type.Equals(direct) || !ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;
 
             // One the value object declares itself implements the interface already, as C# maps it.
-            if (builder.Target.Methods.Any(method => method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.ToNonNullable().Equals(type))) continue;
+            if (builder.Target.Methods.Any(method => method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.ToNonNullable().Equals(type) && ValueObjectDeclaration.IsByValueAndNotGeneric(method))) continue;
 
             var hidden = type;
             builder.IntroduceMethod(

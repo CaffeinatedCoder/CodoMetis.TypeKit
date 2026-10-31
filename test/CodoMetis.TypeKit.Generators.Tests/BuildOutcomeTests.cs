@@ -183,6 +183,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetOverParsingBase", "ParsingSetBase<SetOverParsingBase>.Parse(string) in its base type ParsingSetBase<SetOverParsingBase>")]
     [InlineData("SetOverIgnoreCaseParsingBase", "IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>.Parse(string, bool) in its base type IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>")]
     [InlineData("SetOverTryParsingBase", "TryParsingSetBase<SetOverTryParsingBase>.TryParse(string?, bool, out SetOverTryParsingBase) in its base type TryParsingSetBase<SetOverTryParsingBase>")]
+    [InlineData("SetWithTryParseByRef", "SetWithTryParseByRef.TryParse(string?, ref SetWithTryParseByRef)")]
+    [InlineData("SetOverTryParsingByRefBase", "TryParsingByRefSetBase<SetOverTryParsingByRefBase>.TryParse(string?, bool, ref SetOverTryParsingByRefBase) in its base type TryParsingByRefSetBase<SetOverTryParsingByRefBase>")]
     [InlineData("SetOverMatchingBase", "MatchingSetBase.Match<TResult>(Func<TResult>) in its base type MatchingSetBase")]
     [InlineData("SetOverParsableBase", "the interface IParsable<SetOverParsableBase> in its base type ParsableSetBase<SetOverParsableBase>")]
     [InlineData("SetOverAllListingBase", "AllListingSetBase.All in its base type AllListingSetBase")]
@@ -338,6 +340,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenParse", "HandWrittenParse.Parse(string, IFormatProvider?)")]
     [InlineData("HandWrittenParseOverASet", "HandWrittenParseOverASet.Parse(string, IFormatProvider?)")]
     [InlineData("HandWrittenFormat", "HandWrittenFormat.ToString(string?, IFormatProvider?)")]
+    [InlineData("TryParseByRef", "TryParseByRef.TryParse(string?, IFormatProvider?, ref TryParseByRef)")]
+    [InlineData("TryParseByIn", "TryParseByIn.TryParse(string?, IFormatProvider?, in TryParseByIn)")]
+    [InlineData("ParseOfOtherNullability", "ParseOfOtherNullability.Parse(string?, IFormatProvider)")]
+    [InlineData("TryFormatByRef", "TryFormatByRef.TryFormat(Span<char>, ref int, ReadOnlySpan<char>, IFormatProvider?)")]
     [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
     [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
     [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
@@ -495,6 +501,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "InheritsPublicFormatting", "PublicFormattingBase.ToString(string?, IFormatProvider?) in its base type PublicFormattingBase")]
     [InlineData("CMTK1008", "InheritsPublicObjectOrder", "PublicObjectOrderBase.CompareTo(object?) in its base type PublicObjectOrderBase")]
     [InlineData("CMTK1011", "InheritsPublicParsing", "PublicParsingBase<InheritsPublicParsing>.Parse(string, IFormatProvider?) in its base type PublicParsingBase<InheritsPublicParsing>")]
+    [InlineData("CMTK1011", "InheritsTryParseByRef", "TryParseByRefBase<InheritsTryParseByRef>.TryParse(string?, IFormatProvider?, ref InheritsTryParseByRef) in its base type TryParseByRefBase<InheritsTryParseByRef>")]
     [InlineData("CMTK1011", "InheritsMinMaxNames", "MinMaxNamesBase<InheritsMinMaxNames>.MinValue in its base type MinMaxNamesBase<InheritsMinMaxNames>")]
     [InlineData("CMTK1011", "InheritsValueName", "ValueNameBase.Value in its base type ValueNameBase")]
     [InlineData("CMTK1011", "InheritsFromName", "FromNameBase<InheritsFromName>.From(int) in its base type FromNameBase<InheritsFromName>")]
@@ -1043,6 +1050,27 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 public string ToString(string? format, System.IFormatProvider? provider) => "";
             }
 
+            // No overload in C#: ref or in against the generated out (CS0663), and another nullability (#226).
+            public readonly partial record struct TryParseByRef : IValue<int>
+            {
+                public static bool TryParse(string? s, System.IFormatProvider? provider, ref TryParseByRef result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct TryParseByIn : IValue<int>
+            {
+                public static bool TryParse(string? s, System.IFormatProvider? provider, in TryParseByIn result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ParseOfOtherNullability : IValue<int>
+            {
+                public static ParseOfOtherNullability Parse(string? s, System.IFormatProvider provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct TryFormatByRef : IValue<int>
+            {
+                public bool TryFormat(System.Span<char> destination, ref int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => false;
+            }
+
             public readonly partial record struct HandWrittenMinValue : IValue<int>
             {
                 public static int MinValue => 0;
@@ -1510,6 +1538,13 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             }
 
             public sealed partial record InheritsPublicParsing : PublicParsingBase<InheritsPublicParsing>, IValue<int>;
+
+            public abstract record TryParseByRefBase<TSelf>
+            {
+                public static bool TryParse(string? s, System.IFormatProvider? provider, ref TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsTryParseByRef : TryParseByRefBase<InheritsTryParseByRef>, IValue<int>;
 
             public abstract record MinMaxNamesBase<TSelf> where TSelf : MinMaxNamesBase<TSelf>
             {
@@ -2042,6 +2077,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetOverIgnoreCaseParsingBase : IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>, IClosedSet<SetOverIgnoreCaseParsingBase> { public static readonly SetOverIgnoreCaseParsingBase A = new(); }
             public abstract class TryParsingSetBase<TSelf> { public static bool TryParse(string? name, bool ignoreCase, out TSelf member) => throw new System.NotSupportedException(); }
             public sealed partial class SetOverTryParsingBase : TryParsingSetBase<SetOverTryParsingBase>, IClosedSet<SetOverTryParsingBase> { public static readonly SetOverTryParsingBase A = new(); }
+            public sealed partial class SetWithTryParseByRef : IClosedSet<SetWithTryParseByRef> { public static readonly SetWithTryParseByRef A = new(); public static bool TryParse(string? name, ref SetWithTryParseByRef member) => throw new System.NotSupportedException(); }
+            public abstract class TryParsingByRefSetBase<TSelf> { public static bool TryParse(string? name, bool ignoreCase, ref TSelf member) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverTryParsingByRefBase : TryParsingByRefSetBase<SetOverTryParsingByRefBase>, IClosedSet<SetOverTryParsingByRefBase> { public static readonly SetOverTryParsingByRefBase A = new(); }
             public abstract class MatchingSetBase { public TResult Match<TResult>(System.Func<TResult> only) => only(); }
             public sealed partial class SetOverMatchingBase : MatchingSetBase, IClosedSet<SetOverMatchingBase> { public static readonly SetOverMatchingBase A = new(); }
             public abstract class ParsableSetBase<TSelf> : System.IParsable<TSelf> where TSelf : ParsableSetBase<TSelf>

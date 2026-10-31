@@ -187,6 +187,23 @@ public readonly partial record struct ProbeSpan : IValue<ProbeSpanText>;
 public abstract record ProbeRecordBase;
 
 /// <summary>
+/// A base record in another assembly whose methods share a generated member's name and parameter types, but are
+/// other methods to C#: a generic <c>Parse</c>, a <c>From</c> that takes its value by <c>in</c>, and a
+/// <c>TryParse</c> whose last parameter is by value. The generated members sit beside them (#226).
+/// </summary>
+public abstract record ProbeOverloadingRecord<TSelf>
+{
+    /// <summary>A generic overload, never the generated <c>Parse</c>.</summary>
+    public static TSelf Parse<TFormat>(string text, IFormatProvider? provider) => throw new NotSupportedException("hand-written");
+
+    /// <summary>An overload by <c>in</c>, never the generated <c>From</c>.</summary>
+    public static TSelf From(in int value) => throw new NotSupportedException("hand-written");
+
+    /// <summary>An overload whose last parameter is by value, never the generated <c>TryParse</c>.</summary>
+    public static bool TryParse(string? text, IFormatProvider? provider, TSelf fallback) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>
 /// A base record in another assembly for the test assembly's value objects, whose sealed
 /// <c>ToString()</c> is the formatting seam: C# keeps it in every derived record.
 /// </summary>
