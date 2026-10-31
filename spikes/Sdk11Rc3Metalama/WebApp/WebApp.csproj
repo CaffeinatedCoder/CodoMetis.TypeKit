@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!--
+      The web SDK loads the Razor source generator, the analyzer LAMA0617 is about. Built, not run.
+        -p:MetalamaFramework=V  a direct Metalama.Framework V reference beside the 2.3.1 packages
+  -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseSharedCompilation>false</UseSharedCompilation>
+    <!-- The route parameter's documented false alarm (decision 12), on every SDK: not what this measures. -->
+    <NoWarn>$(NoWarn);ASP0020</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CodoMetis.TypeKit" Version="2.3.1" />
+    <PackageReference Include="CodoMetis.TypeKit.Generators" Version="2.3.1" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MetalamaFramework)' != ''">
+    <PackageReference Include="Metalama.Framework" Version="$(MetalamaFramework)" />
+  </ItemGroup>
+</Project>

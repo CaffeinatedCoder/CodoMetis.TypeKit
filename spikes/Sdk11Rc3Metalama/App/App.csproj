@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+      One consumer, switched per row by properties (README, "The rows"):
+        -p:ProbeVersion=true  #error version, which names the compiler and its language version
+        -p:DeclareUnion=true  a union declared here, and a switch over it
+        -p:HoldUnion=true     UnionLib's union held in a var and printed
+        -p:MatchUnion=true    a switch over UnionLib's union
+        -p:MetalamaFramework=V  a direct Metalama.Framework V reference beside the 2.3.1 packages
+        -p:NoGenerators=true  the control: no TypeKit, no Metalama, no value object
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants Condition="'$(ProbeVersion)' == 'true'">$(DefineConstants);PROBE_VERSION</DefineConstants>
+    <DefineConstants Condition="'$(DeclareUnion)' == 'true'">$(DefineConstants);DECLARE_UNION</DefineConstants>
+    <DefineConstants Condition="'$(HoldUnion)' == 'true'">$(DefineConstants);HOLD_UNION</DefineConstants>
+    <DefineConstants Condition="'$(MatchUnion)' == 'true'">$(DefineConstants);MATCH_UNION</DefineConstants>
+    <DefineConstants Condition="'$(NoGenerators)' == 'true'">$(DefineConstants);NO_GENERATORS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(NoGenerators)' != 'true'">
+    <PackageReference Include="CodoMetis.TypeKit" Version="2.3.1" />
+    <PackageReference Include="CodoMetis.TypeKit.Generators" Version="2.3.1" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MetalamaFramework)' != ''">
+    <PackageReference Include="Metalama.Framework" Version="$(MetalamaFramework)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HoldUnion)' == 'true' Or '$(MatchUnion)' == 'true'">
+    <ProjectReference Include="../UnionLib/UnionLib.csproj" />
+  </ItemGroup>
+</Project>

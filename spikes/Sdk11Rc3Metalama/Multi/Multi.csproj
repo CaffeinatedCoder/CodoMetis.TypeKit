@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+      One project on both targets, with no LangVersion: each target takes its SDK default. Rows:
+        -p:MetalamaFramework=V  a direct Metalama.Framework V reference beside the 2.3.1 packages
+        -p:ProbeVersion=true    #error version, once per target
+        -p:IfUnion=true         a union and a switch over it inside #if NET11_0_OR_GREATER
+        -p:ExcludedFile=true    Net11Only/Shapes.cs, a union, compiled on net11.0 only (Compile Remove on net10.0)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants Condition="'$(ProbeVersion)' == 'true'">$(DefineConstants);PROBE_VERSION</DefineConstants>
+    <DefineConstants Condition="'$(IfUnion)' == 'true'">$(DefineConstants);IF_UNION</DefineConstants>
+    <DefineConstants Condition="'$(ExcludedFile)' == 'true'">$(DefineConstants);EXCLUDED_FILE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CodoMetis.TypeKit" Version="2.3.1" />
+    <PackageReference Include="CodoMetis.TypeKit.Generators" Version="2.3.1" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MetalamaFramework)' != ''">
+    <PackageReference Include="Metalama.Framework" Version="$(MetalamaFramework)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Net11Only/**" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <Compile Remove="Net11Only/**" Condition="'$(ExcludedFile)' != 'true'" />
+  </ItemGroup>
+</Project>
