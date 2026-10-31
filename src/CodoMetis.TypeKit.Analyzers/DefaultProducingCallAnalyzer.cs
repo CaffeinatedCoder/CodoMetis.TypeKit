@@ -42,6 +42,16 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <c>X.TryFrom(…).OrDefault()</c> is recognised there by name.
 /// </para>
 /// <para>
+/// An outer join hands its result selector, or its tuple, the <c>default</c> of the side with no match:
+/// <c>LeftJoin</c>'s inner element, <c>RightJoin</c>'s outer element and either element of .NET 11's
+/// <c>FullJoin</c>, every overload on <c>Enumerable</c>, <c>Queryable</c> and <c>AsyncEnumerable</c>
+/// (<see cref="LinqJoins"/>). Each such side whose element is a no-default struct is reported, read from the
+/// call's type arguments, or from the sequences' element types where the call does not bind because a
+/// lambda reads a generated member. In memory the way out is an <c>Option</c> of each element, whose
+/// <c>default</c> is <c>None</c>, so an <c>Option</c> element is not reported here; in a query, a nullable
+/// projection, which EF Core 11 translates under <c>FULL JOIN</c> as under <c>LEFT JOIN</c>.
+/// </para>
+/// <para>
 /// With a message of its own, the rule also reports <c>FirstOrNone</c>, <c>SingleOrNone</c>,
 /// <c>LastOrNone</c>, <c>FirstOrError</c> and <c>LastOrError</c> called on a query with a delegate for
 /// a condition: a <c>Func</c> variable, a field, a method group, an anonymous method, a call that
@@ -96,6 +106,9 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
             var func      = start.Compilation.GetTypeByMetadataName("System.Func`2");
             if (queryable is not null && func is not null && QueryDelegateForms(symbols, func) is { Count: > 0 } delegates)
                 start.RegisterOperationAction(operation => AnalyzeQueryDelegate(operation, delegates, queryable, func), OperationKind.Invocation);
+
+            if (Joins(start.Compilation) is { Count: > 0 } joins)
+                start.RegisterSyntaxNodeAction(node => AnalyzeJoin(node, symbols, joins), SyntaxKind.InvocationExpression);
 
             var forms = Forms(start.Compilation, symbols);
             if (forms.Count == 0) return;
@@ -176,6 +189,35 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         }
 
         return forms;
+    }
+
+    /// <summary>
+    /// <c>ids.LeftJoin(known, …)</c> and the other outer joins: each side the join fills with <c>default</c>
+    /// for a missing match whose element is a no-default struct, a diagnostic each.
+    /// </summary>
+    private static void AnalyzeJoin(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols, Dictionary<IMethodSymbol, JoinSide[]> joins)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+
+        if (LinqJoins.NameOf(invocation) is not ("LeftJoin" or "RightJoin" or "FullJoin")) return;
+        if (LinqJoins.Resolve(context.SemanticModel, invocation, joins, context.CancellationToken, out var sides, out var bound) is not { } join) return;
+
+        foreach (var side in sides)
+        {
+            // Where the call does not bind, no type argument is known: the sequence passed for the side says it.
+            var element = bound
+                              ? join.TypeArguments[side.TypeParameter]
+                              : LinqJoins.Element(context.SemanticModel, invocation, join, side.Sequence, context.CancellationToken);
+
+            if (element is null) continue;
+
+            if (element is { IsValueType: false, NullableAnnotation: NullableAnnotation.Annotated }) element = element.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+
+            // A default Option is None: the side with no match is absent, which is the way out the message names.
+            if (symbols.DefaultRestriction(element) is null || symbols.OutcomeName(element) == "Option") continue;
+
+            context.Report(Create(invocation, join.Name, element, side.Form));
+        }
     }
 
     private static void Analyze(OperationAnalysisContext context, TypeKitSymbols symbols, Dictionary<IMethodSymbol, Form> forms)
@@ -366,6 +408,53 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         return forms;
     }
 
+    /// <summary>
+    /// The outer joins by original definition, with each side they fill with <c>default</c> for a missing
+    /// match: <c>LeftJoin</c>'s inner, <c>RightJoin</c>'s outer, both of <c>FullJoin</c>'s. An overload
+    /// that does not name both sides as the others do is left out.
+    /// </summary>
+    private static Dictionary<IMethodSymbol, JoinSide[]> Joins(Compilation compilation)
+    {
+        var joins     = new Dictionary<IMethodSymbol, JoinSide[]>(SymbolEqualityComparer.Default);
+        var queryable = compilation.GetTypesByMetadataName("System.Linq.Queryable");
+
+        foreach (var method in LinqJoins.Overloads(compilation, ["LeftJoin", "RightJoin", "FullJoin"]))
+        {
+            // The type parameter and parameter names are the methods' public contract, the same for every
+            // overload: TOuter of outer, TInner of inner.
+            var inQuery = queryable.Contains(method.ContainingType, SymbolEqualityComparer.Default);
+            var outer   = Side(method, "TOuter", "outer", " as the outer element of an inner element with no match", inQuery);
+            var inner   = Side(method, "TInner", "inner", " as the inner element of an outer element with no match", inQuery);
+
+            if (outer is null || inner is null) continue;
+
+            joins[method] = method.Name switch
+            {
+                "LeftJoin"  => [inner],
+                "RightJoin" => [outer],
+                _           => [outer, inner]
+            };
+        }
+
+        return joins;
+    }
+
+    private static JoinSide? Side(IMethodSymbol join, string typeParameter, string sequence, string circumstance, bool inQuery)
+    {
+        var parameter = join.TypeParameters.FirstOrDefault(candidate => candidate.Name == typeParameter);
+        var argument  = join.Parameters.FirstOrDefault(candidate => candidate.Name == sequence);
+
+        if (parameter is null || argument is null) return null;
+
+        // A default Option is None, so absence is explicit and an element that equals its type's default stays
+        // a value. A query cannot hold an Option, and a nullable projection is translated under any join.
+        var advice = inQuery
+                         ? $"Select a nullable first, as in {sequence}.Select(x => ({{0}}?)x), so that no match is null"
+                         : $"Wrap each {sequence} element in an Option before the join, as in {sequence}.Select(Option.Some), so that no match is None";
+
+        return new JoinSide(parameter.Ordinal, argument.Ordinal, new Form(Kind.Join, Produced.TypeArgument, circumstance, advice));
+    }
+
     private static void AddWithoutDefaultValue(Dictionary<IMethodSymbol, Form> forms, INamedTypeSymbol? type, string name, Form form)
     {
         foreach (var method in Methods(type, name))
@@ -389,7 +478,8 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         Nullable,
         Dictionary,
         Created,
-        OrDefault
+        OrDefault,
+        Join
     }
 
     /// <summary>Where the produced type is read at a call.</summary>
@@ -406,6 +496,19 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
 
         /// <summary>The <c>typeof</c> passed first: <c>Activator.CreateInstance(typeof(T))</c>.</summary>
         TypeOf
+    }
+
+    /// <summary>One side of an outer join that is <c>default</c> for a missing match.</summary>
+    /// <param name="typeParameter">The ordinal of its element's type parameter, <c>TOuter</c> or <c>TInner</c>.</param>
+    /// <param name="sequence">The ordinal of the parameter its sequence is passed for, <c>outer</c> or <c>inner</c>.</param>
+    /// <param name="form">How it is reported.</param>
+    private sealed class JoinSide(int typeParameter, int sequence, Form form)
+    {
+        public int TypeParameter { get; } = typeParameter;
+
+        public int Sequence { get; } = sequence;
+
+        public Form Form { get; } = form;
     }
 
     /// <summary>How one method is reported.</summary>

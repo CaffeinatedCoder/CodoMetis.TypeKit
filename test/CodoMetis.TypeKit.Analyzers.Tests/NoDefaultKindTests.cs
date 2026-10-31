@@ -18,7 +18,7 @@ namespace CodoMetis.TypeKit.Analyzers.Tests;
 /// </remarks>
 public sealed class NoDefaultKindTests
 {
-    private static bool HasNoDefault(TypeArgumentKind kind) => kind switch
+    internal static bool HasNoDefault(TypeArgumentKind kind) => kind switch
     {
         KindOfType type           => type.Is.HasFlag(Is.Struct) && type.Is.HasFlag(Is.ValueObjectMarker),
         KindOfParameter parameter => parameter.Facts.Declares.HasFlag(Declares.ValueObjectBound)

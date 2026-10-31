@@ -121,37 +121,10 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
     /// </remarks>
     private static void AnalyzeJoin(SyntaxNodeAnalysisContext context, InvocationExpressionSyntax invocation, TypeKitSymbols symbols, Dictionary<IMethodSymbol, KeySelectors> joins)
     {
-        var info = context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken);
+        if (LinqJoins.Resolve(context.SemanticModel, invocation, joins, context.CancellationToken, out var keys, out _) is not { } join) return;
 
-        IMethodSymbol? join = null;
-        KeySelectors keys = default;
-
-        foreach (var candidate in info.Symbol is IMethodSymbol bound ? [bound] : info.CandidateSymbols.OfType<IMethodSymbol>())
-        {
-            if (!joins.TryGetValue((candidate.ReducedFrom ?? candidate).OriginalDefinition, out keys)) continue;
-
-            join = candidate;
-            break;
-        }
-
-        if (join is null) return;
-
-        // outer.Join(inner, …) passes the outer sequence as the receiver: the first argument is the second parameter.
-        var definition = (join.ReducedFrom ?? join).OriginalDefinition;
-        var offset     = join.ReducedFrom is null ? 0 : 1;
-        var arguments  = invocation.ArgumentList.Arguments;
-
-        ExpressionSyntax? outerKey = null, innerKey = null;
-
-        for (var index = 0; index < arguments.Count; index++)
-        {
-            var ordinal = arguments[index].NameColon is { } name
-                              ? definition.Parameters.FirstOrDefault(parameter => parameter.Name == name.Name.Identifier.ValueText)?.Ordinal
-                              : index + offset;
-
-            if (ordinal == keys.Outer) outerKey = arguments[index].Expression;
-            else if (ordinal == keys.Inner) innerKey = arguments[index].Expression;
-        }
+        var outerKey = LinqJoins.Argument(invocation, join, keys.Outer);
+        var innerKey = LinqJoins.Argument(invocation, join, keys.Inner);
 
         if (outerKey is null || innerKey is null || KeyOf(outerKey) is not { } outer || KeyOf(innerKey) is not { } inner) return;
 
@@ -169,24 +142,19 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// The LINQ joins by their original definitions, with where their key selectors are: <c>Join</c>,
     /// <c>GroupJoin</c>, <c>LeftJoin</c> and <c>RightJoin</c> of <c>Enumerable</c>, <c>Queryable</c> and
-    /// <c>AsyncEnumerable</c>, each type resolved from the compilation. Every match of a name counts, as
-    /// in <see cref="TypeKitSymbols.Resolve"/>: the System.Linq.Async package declares an
-    /// <c>AsyncEnumerable</c> of its own.
+    /// <c>AsyncEnumerable</c> (<see cref="LinqJoins"/>).
     /// </summary>
     private static Dictionary<IMethodSymbol, KeySelectors> Joins(Compilation compilation)
     {
         var joins = new Dictionary<IMethodSymbol, KeySelectors>(SymbolEqualityComparer.Default);
 
-        foreach (var type in new[] { "System.Linq.Enumerable", "System.Linq.Queryable", "System.Linq.AsyncEnumerable" }.SelectMany(name => compilation.GetTypesByMetadataName(name)))
+        foreach (var method in LinqJoins.Overloads(compilation, JoinNames))
         {
-            foreach (var method in JoinNames.SelectMany(name => type.GetMembers(name)).OfType<IMethodSymbol>())
-            {
-                // The parameter names are the methods' public contract, the same for every overload.
-                var outer = method.Parameters.FirstOrDefault(parameter => parameter.Name == "outerKeySelector");
-                var inner = method.Parameters.FirstOrDefault(parameter => parameter.Name == "innerKeySelector");
+            // The parameter names are the methods' public contract, the same for every overload.
+            var outer = method.Parameters.FirstOrDefault(parameter => parameter.Name == "outerKeySelector");
+            var inner = method.Parameters.FirstOrDefault(parameter => parameter.Name == "innerKeySelector");
 
-                if (outer is not null && inner is not null) joins[method] = new KeySelectors(outer.Ordinal, inner.Ordinal);
-            }
+            if (outer is not null && inner is not null) joins[method] = new KeySelectors(outer.Ordinal, inner.Ordinal);
         }
 
         return joins;
