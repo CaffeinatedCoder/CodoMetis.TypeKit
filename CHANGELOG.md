@@ -20,6 +20,7 @@ section is the GitHub release's notes.
 ### Changed
 
 - Packages: the public surface is checked against 2.3.1's, so nothing 2.3.1 ships is removed or changed in 2.4.0.
+- Analyzers: CMTK0009 now warns at `LeftJoin`, `RightJoin` and .NET 11's `FullJoin` whose side with no match is a value object, `Result` or `[RequireCustomInitialization]` struct, which the join fills with `default`; the message names an `Option` of each element, or a nullable projection in a query. In a build that treats warnings as errors, that can report code that built before ([CMTK0009](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0009)).
 
 ### Fixed
 

@@ -34,7 +34,7 @@ project. The two packages share a version and move together.
 | CMTK0006 | Warning | A field or auto-property of such a type, in a class, that no initializer, `required` or constructor sets. Also a `required` one that a `[SetsRequiredMembers]` constructor doesn't set. |
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The values inside two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves compared through `Equals(object)`. |
-| CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. Also `FirstOrNone`, `SingleOrNone` or `FirstOrError` on a query given a delegate, which reads every row. |
+| CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind, and the side of a `LeftJoin`, `RightJoin` or `FullJoin` with no match. Also `FirstOrNone`, `SingleOrNone` or `FirstOrError` on a query given a delegate, which reads every row. |
 | CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]`. Also a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument. Checked at any closed use, written or inferred: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, a member of a generic extension block, whose arguments the receiver gives, and a method the compiler calls for a `foreach`, an `await`, a deconstruction, a positional pattern or a collection expression (there, `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` join in 3.0.0). A type parameter passed on without the attribute is a breach too. A method that implements an interface's method, or overrides one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position. It binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
@@ -428,13 +428,19 @@ var first = ids.FirstOrDefault();                    // CMTK0009: an OrderId nob
 | `dictionary.GetValueOrDefault(key)`, an immutable dictionary's included | `GetValueOrNone(key)`, which returns an `Option`, or pass a default value |
 | `Activator.CreateInstance<T>()`, `Activator.CreateInstance(typeof(T))`, `RuntimeHelpers.GetUninitializedObject(typeof(T))` | one of the type's factories |
 | `Option<T>.OrDefault()` | `Or(fallback)` or `Match`, which say what `None` becomes |
+| `LeftJoin`, `RightJoin`, and .NET 11's `FullJoin` on a sequence or an `IAsyncEnumerable<T>`: `LeftJoin`'s inner element when an outer one has no match, `RightJoin`'s outer element, either of `FullJoin`'s | wrap that side's elements in an `Option` before the join, `inner.Select(Option.Some)`. A `default` `Option` is `None`, so no match reads as `None` |
+| `Queryable.LeftJoin`, `RightJoin`, `FullJoin` | select a nullable first, `inner.Select(x => (OrderId?)x)`, so no match is null. EF Core translates it under `LEFT JOIN`, and EF Core 11 under `FULL JOIN` too (checked with 11.0.0-rc.3.26522.148) |
 
 The element type is judged as CMTK0001 judges a `default`: a value object, `Option`, `Result`,
 `[RequireCustomInitialization]` struct, or a type parameter constrained to be one. For the
-asynchronous forms, it is the type the task returns.
+asynchronous forms, it is the type the task returns. For a join, it is the element of the side with
+no match, and each such side is a warning of its own: a `FullJoin` of two value objects gets two.
 
-Not reported: an overload given a default value, and an element type whose default is null or an
-ordinary value. EF Core's forms are recognised in any project that references EF Core.
+Not reported: an overload given a default value, an element type whose default is null or an
+ordinary value, the side of a join that always has an element (`LeftJoin`'s outer, `RightJoin`'s
+inner), `Join` and `GroupJoin`, which have no side without a match, and an `Option` element of a
+join, whose `default` is `None`. EF Core's forms are recognised in any project that references EF
+Core.
 
 It's a warning, because code that checks the sequence isn't empty first is correct, and the rule
 can't tell.

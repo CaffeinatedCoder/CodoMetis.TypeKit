@@ -2877,6 +2877,35 @@
     ]
   },
   {
+    "id": "K09-a-join-reports-each-side-with-no-match",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0009",
+    "quote": "For a join, it is the element of the side with no match, and each such side is a warning of its own: a `FullJoin` of two value objects gets two.",
+    "claim": "For a join, it is the element of the side with no match, and each such side is a warning of its own: a `FullJoin` of two value objects gets two.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "OuterJoinDefaultTests"
+    ]
+  },
+  {
+    "id": "K09-an-option-element-of-a-join-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0009",
+    "quote": "the side of a join that always has an element (`LeftJoin`'s outer, `RightJoin`'s inner), `Join` and `GroupJoin`, which have no side without a match, and an `Option` element of a join, whose `default` is `None`.",
+    "claim": "the side of a join that always has an element (`LeftJoin`'s outer, `RightJoin`'s inner), `Join` and `GroupJoin`, which have no side without a match, and an `Option` element of a join, whose `default` is `None`.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*",
+      "Option.Some"
+    ],
+    "heldBy": [
+      "OuterJoinDefaultTests"
+    ]
+  },
+  {
     "id": "L01-read-as-the-underlying-type-reads",
     "source": "README.md#what-typekit-guarantees",
     "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
