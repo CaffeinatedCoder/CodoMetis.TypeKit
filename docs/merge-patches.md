@@ -198,6 +198,10 @@ A patch inside a list or a dictionary is described the same way, element by elem
 `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`,
 is an object whose values are a string or `null`.
 
+A nullable `Patch<string>?` accepts the same values. But System.Text.Json reads a `null` there as a
+`null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.
+Use `Patch<string>` for a field a request can clear.
+
 **Good to know**
 
 - **This isn't ASP.NET Core's JSON Patch** (RFC 6902, `application/json-patch+json`), which is a list

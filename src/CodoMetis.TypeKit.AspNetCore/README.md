@@ -150,7 +150,9 @@ described as `T`'s schema:
 A value object inside a patch is described through its underlying type. That's also what a host on
 source-generated JSON can do, because the patch's converter hides the value object from the context.
 
-Each element of a list, an array or a dictionary of patches is described as a patch property is.
+Each element of a list, an array or a dictionary of patches is described as a patch property is. A
+nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch:
+a `null` there reads as a `null` patch, the same as a property left out.
 
 **A described type.** ASP.NET can't see through a JSON converter you write yourself. It writes the
 type as `{}`, or with only the `format` its CLR type maps to. It also drops a list's `items` and a

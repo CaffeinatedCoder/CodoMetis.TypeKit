@@ -22,7 +22,7 @@ section is the GitHub release's notes.
 
 ### Fixed
 
-- OpenAPI: each element of a list, an array or a dictionary of `Patch<T>` is described as a patch property is, the argument's schema admitting null, where it admitted anything ([Use it in an endpoint and in the document](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document)).
+- OpenAPI: each element of a list, an array or a dictionary of `Patch<T>` is described as a patch property is, the argument's schema admitting null, where it admitted anything. A nullable `Patch<T>?` is its argument's schema admitting null, where it was an empty required component; System.Text.Json reads a null there as a `null` patch, as it reads a property left out ([Use it in an endpoint and in the document](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document)).
 
 ## 2.3.0 — 2026-10-29
 

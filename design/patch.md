@@ -59,7 +59,7 @@ names what is missing.
 
 | Where | How | Held by |
 |---|---|---|
-| OpenAPI | The argument's schema, inlined, admitting null, required only where the serializer requires it, in 3.1 and 3.0; each element of a list or a dictionary of patches as a property is, in 2.0 too | `PatchSchemaTests` |
+| OpenAPI | The argument's schema, inlined, admitting null, required only where the serializer requires it, in 3.1 and 3.0; each element of a list or a dictionary of patches as a property is, in 2.0 too; a nullable patch admits the same, without the merge-patch description, since the serializer reads its null as null | `PatchSchemaTests` |
 | Testing | Assertions per state that hand back the value | `PatchAssertionTests` |
 | Serilog | Logs its state only | the Serilog tests |
 | EF Core | Not mapped: a patch is the shape of a request, applied to an entity with its own types | — |
