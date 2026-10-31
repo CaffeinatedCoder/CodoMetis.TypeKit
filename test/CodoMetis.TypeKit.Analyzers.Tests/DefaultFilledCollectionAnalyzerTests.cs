@@ -109,6 +109,69 @@ public sealed class DefaultFilledCollectionAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A multidimensional array holds no element when any dimension is a constant zero, not only when
+    /// every one is: <c>new Plain[0, 2]</c> was reported (#227). Across the input class, an array
+    /// creation by rank and by which dimension is a constant zero; one with no zero dimension reports.
+    /// </summary>
+    [Fact]
+    public Task An_array_with_any_constant_zero_dimension_stays_silent() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(int n)
+                {
+                    const int none = 0;
+                    var first = new Plain[0, 2];
+                    var second = new Plain[2, 0];
+                    var both = new Plain[0, 0];
+                    var variable = new Plain[n, 0];
+                    var named = new Plain[none, n];
+                    var middle = new Plain[2, 0, 2];
+                    var last = new Plain[n, 2, 0];
+                    var jagged = new Plain[0][];
+                    var grid = {|#0:new Plain[2, 2]|};
+                    var cube = {|#1:new Plain[n, 1, 2]|};
+                }
+            }
+            """,
+            Cmtk0005(0, "An array created with a length", "Plain"),
+            Cmtk0005(1, "An array created with a length", "Plain"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A zero of any integral type creates no slot: a dimension may be a <c>long</c>, <c>uint</c> or
+    /// <c>ulong</c>, and a <c>stackalloc</c> size's constant is read before its conversion to <c>int</c>,
+    /// so <c>0L</c> and <c>(byte)0</c> were reported where <c>0</c> was not.
+    /// </summary>
+    [Fact]
+    public Task A_zero_of_any_integral_type_stays_silent() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(int n, Plain[] existing)
+                {
+                    var asLong = new Plain[0L];
+                    var asUnsigned = new Plain[0u, 2];
+                    var asUnsignedLong = new Plain[2, 0ul];
+                    var asByte = new Plain[(byte)0];
+                    var asChar = new Plain['\0'];
+                    Span<Plain> stackByte = stackalloc Plain[(byte)0];
+                    Span<Plain> stackShort = stackalloc Plain[(short)0];
+                    Span<Plain> stackChar = stackalloc Plain['\0'];
+                    var allocated = GC.AllocateArray<Plain>((byte)0);
+                    Array.Resize(ref existing, '\0');
+                    var one = {|#0:new Plain[1L]|};
+                    Span<Plain> stackOne = {|#1:stackalloc Plain[(byte)1]|};
+                }
+            }
+            """,
+            Cmtk0005(0, "An array created with a length", "Plain"),
+            Cmtk0005(1, "A stackalloc with a length", "Plain"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// The subjects' own <c>new Plain[1]</c> inside <c>Plain</c> doubles as the exemption for the type
     /// itself. Nothing here starts with a default element of a no-default struct.
     /// </summary>

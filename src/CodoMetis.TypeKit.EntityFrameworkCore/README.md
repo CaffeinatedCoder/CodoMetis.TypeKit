@@ -211,6 +211,12 @@ instead, which works everywhere and may add a cast:
     such as Npgsql's `EF.Functions.GreaterThan((o.Priority, o.Id), (priority, id))`;
   - `Min` or `Max`.
 
+  That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`,
+  and when the cast value reaches the ordering another way, through `??`, a member of a projection, a
+  grouping's key, a join or a subquery's `First()`, as in
+  `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory
+  still orders by your `CompareTo`.
+
   Compare or order by `.Value` where the underlying value's order is what you mean
   (`OrderBy(o => o.Priority.Value)`), or order in memory after the query. Equality isn't ordering,
   and stays allowed. A query filter (`HasQueryFilter`, named or not) that does the same fails when

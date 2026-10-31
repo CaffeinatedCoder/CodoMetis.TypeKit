@@ -1239,6 +1239,33 @@
     ]
   },
   {
+    "id": "C22-a-set-s-base-class-members",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "Any other generated member written by hand fails the build (CMTK1011), in the set or in a class it derives from.",
+    "claim": "A generated member of a closed set written in a base class fails the build with CMTK1011.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-a-set-s-base-class-tostring",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "A `sealed` one is kept, since C# keeps it in every derived class. One that isn't sealed fails the build (CMTK1011), because the generated `ToString()` would replace it.",
+    "claim": "A closed set over a base class's sealed ToString() prints it; over one not sealed, the build fails with CMTK1011.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests",
+      "InheritedMembersTests"
+    ]
+  },
+  {
     "id": "C22-abstract",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
@@ -1963,6 +1990,20 @@
     ]
   },
   {
+    "id": "E05-ordering-boxed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "claim": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests",
+      "QueryTranslationVariantTests"
+    ]
+  },
+  {
     "id": "E05-query-filter",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
@@ -2430,6 +2471,20 @@
     ],
     "heldBy": [
       "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K05-a-zero-dimension-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "That holds for any one dimension: `new OrderId[0, count]` holds no element either.",
+    "claim": "CMTK0005 does not report an array whose length is a constant zero in any one of its dimensions.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
     ]
   },
   {
