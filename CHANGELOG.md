@@ -22,7 +22,7 @@ section is the GitHub release's notes.
 
 ### Fixed
 
-- Analyzers: CMTK0005 no longer reports an array with a constant zero in any one dimension, such as `new OrderId[0, count]`, which holds no element ([CMTK0005](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005)).
+- Analyzers: CMTK0005 no longer reports an array with a constant zero in any one dimension, such as `new OrderId[0, count]`, or a zero written as `0L` or, in a `stackalloc`, `(byte)0`: neither holds an element ([CMTK0005](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005)).
 
 ## 2.3.0 — 2026-10-29
 
