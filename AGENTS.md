@@ -162,6 +162,9 @@ the whole page. A ranked miss proves nothing.
   introduce is CMTK1011. A new generated member joins that check, or a hand-written one is kept silently.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.
+- **A package contains this repository's code and nothing else.** Third-party code copied into `src/` or
+  bundled into a package brings a `THIRD-PARTY-NOTICES.txt` into that package, with the license texts; a
+  package reference must be under an allowed license ([decision 125](design/adr/0125-a-package-documents-the-third-party-code-it-contains.md)).
 - **A README's or a docs page's C# block is compiled code.** Change it and its region in
   `test/CodoMetis.TypeKit.Samples` together, or `ReadmeSampleTests` fails; the region's scaffolding
   (the types and variables it assumes) stays outside the markers. An output a block states in a comment
