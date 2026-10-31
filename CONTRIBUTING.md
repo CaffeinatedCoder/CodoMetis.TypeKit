@@ -167,6 +167,21 @@ the design records cite commits by hash.
   Found-By: CA
   ```
 
+## Licenses and third-party code
+
+Every package is MIT, set once in `Directory.Build.props`, and contains this repository's code and nothing
+else. A package that bundles nothing needs no notices file: NuGet carries each dependency's license with its own
+package ([decision 125](design/adr/0125-a-package-documents-the-third-party-code-it-contains.md)).
+
+Before a shipped package gets anything third-party:
+
+- **A package reference** has to be under a license the decision allows (MIT, Apache-2.0, BSD-2-Clause,
+  BSD-3-Clause, ISC), and a reference under any other says so in its pull request.
+- **Code copied into `src/`, or an assembly bundled or merged into a package,** keeps its original header and
+  brings a `THIRD-PARTY-NOTICES.txt` into the package, with each entry's license text. Generate it from the
+  shipping projects alone, never by hand, and never with a test, tool or spike package in it.
+- **Test, tool and spike packages** are never shipped, and need nothing.
+
 ## Releasing
 
 The packages share one version and are released together, only through
