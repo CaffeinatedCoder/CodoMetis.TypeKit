@@ -17,9 +17,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <c>stackalloc OrderId[n]</c>, <c>GC.AllocateUninitializedArray&lt;OrderId&gt;(n)</c>,
 /// <c>GC.AllocateArray</c> and <c>Array.Resize</c> (measured 2026-09-28), which adds default slots
 /// whenever the new size is larger, and the rule cannot tell whether it is. An array with initial
-/// elements, a constant length or size of zero and a collection expression start with no default
-/// element and are not reported. A warning, since filling such an array in a loop straight after is
-/// correct code the rule cannot tell apart.
+/// elements, a constant length or size of zero in any one dimension and a collection expression start
+/// with no default element and are not reported. A warning, since filling such an array in a loop
+/// straight after is correct code the rule cannot tell apart.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
@@ -66,7 +66,8 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         var creation = (IArrayCreationOperation)context.Operation;
 
         if (creation.Initializer is not null || creation.Type is not IArrayTypeSymbol { ElementType: var element }) return;
-        if (creation.DimensionSizes.All(size => size.ConstantValue is { HasValue: true, Value: 0 })) return;
+        // Any dimension of zero leaves the array with no element: new T[0, n] holds none.
+        if (creation.DimensionSizes.Any(size => size.ConstantValue is { HasValue: true, Value: 0 })) return;
 
         if (Diagnose(context.ContainingSymbol, creation.Syntax, "An array created with a length", element, symbols) is { } diagnostic) context.Report(diagnostic);
     }
@@ -107,7 +108,7 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         if (stackAlloc.Initializer is not null || stackAlloc.Type is not ArrayTypeSyntax arrayType) return;
 
         var sizes = arrayType.RankSpecifiers.SelectMany(rank => rank.Sizes);
-        if (sizes.All(size => context.SemanticModel.GetConstantValue(size, context.CancellationToken) is { HasValue: true, Value: 0 })) return;
+        if (sizes.Any(size => context.SemanticModel.GetConstantValue(size, context.CancellationToken) is { HasValue: true, Value: 0 })) return;
 
         if (context.SemanticModel.GetTypeInfo(arrayType.ElementType, context.CancellationToken).Type is not { } element) return;
 

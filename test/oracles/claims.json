@@ -2433,6 +2433,20 @@
     ]
   },
   {
+    "id": "K05-a-zero-dimension-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "That holds for any one dimension: `new OrderId[0, count]` holds no element either.",
+    "claim": "CMTK0005 does not report an array whose length is a constant zero in any one of its dimensions.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
     "id": "L01-read-as-the-underlying-type-reads",
     "source": "README.md#what-typekit-guarantees",
     "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",

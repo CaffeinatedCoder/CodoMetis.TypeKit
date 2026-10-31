@@ -20,6 +20,10 @@ section is the GitHub release's notes.
 - Generators: a `CompareTo(TSelf)`, `CompareTo(object)`, `TryFrom` or `Revalidate` a value object inherits from a base record now fails the build (CMTK1008, CMTK1011), so your build can fail when you upgrade. It stood in for the generated member: an inherited `CompareTo` made `<` overflow the stack and an EF Core query order by the column, and an inherited `TryFrom` need not run `Create`. Declare it on the value object ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 - Generators: `IValueObject<TSelf, T>`, `IValueObjectMaterializer<TSelf, T>` or `IPlainValueObject<TSelf, T>` declared through an interface of yours, such as an `IEntityId<TSelf> : IValueObject<TSelf, Guid>`, or by a base record now fails with CMTK1011 naming that interface, where it failed with a Metalama error (LAMA0512) that named nothing you wrote. To constrain generic code, use `IValueObject<TSelf, T>` itself ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 
+### Fixed
+
+- Analyzers: CMTK0005 no longer reports an array with a constant zero in any one dimension, such as `new OrderId[0, count]`, which holds no element ([CMTK0005](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005)).
+
 ## 2.3.0 — 2026-10-29
 
 ### Added
