@@ -222,6 +222,11 @@ instead, which works everywhere and may add a cast:
   and stays allowed. A query filter (`HasQueryFilter`, named or not) that does the same fails when
   the model is built, naming the entity type, since it applies to every query of that type.
 
+  One exception: a filter may order values your context holds, without a lambda, as in
+  `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a
+  lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that
+  filter fails too.
+
 ### On SQL Server
 
 A value object behaves on SQL Server as the type inside it does there. That isn't always how it

@@ -2061,6 +2061,19 @@
     ]
   },
   {
+    "id": "E05-query-filter-own-values",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
+    "claim": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
     "id": "E05-value-order-allowed",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "Compare or order by `.Value` where the underlying value's order is what you mean",
@@ -2515,6 +2528,20 @@
     ],
     "heldBy": [
       "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K05-a-factory-given-a-typeof",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "and so are `Array.CreateInstance` and `Array.CreateInstanceFromArrayType` when a `typeof` names the element, and `ArrayPool<T>.Rent`. A `Type` held in a variable could be anything, so it isn't reported.",
+    "claim": "CMTK0005 reports Array.CreateInstance and Array.CreateInstanceFromArrayType given a typeof of a no-default type, and ArrayPool<T>.Rent of one, and not a Type held in a variable.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
     ]
   },
   {
