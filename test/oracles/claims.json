@@ -1977,6 +1977,19 @@
     ]
   },
   {
+    "id": "E05-query-filter-own-values",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
+    "claim": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
     "id": "E05-query-filter",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
