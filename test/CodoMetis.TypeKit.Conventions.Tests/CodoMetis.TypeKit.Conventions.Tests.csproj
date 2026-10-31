@@ -23,6 +23,14 @@
     </ItemGroup>
 
     <!--
+      The rules read the whole repository by path (its files, its index, every project's sources and evaluation), so a
+      change anywhere reaches these tests and every narrowed suite runs them (tools/CiLanes, design/adr/0127).
+    -->
+    <ItemGroup>
+        <ReadsByPath Include="../../" />
+    </ItemGroup>
+
+    <!--
       So the build restores the shipping projects itself. Referencing none of them, this project
       restores nothing they need, and a `dotnet test` of this project alone on a fresh checkout ran against no
       src/*/obj/project.assets.json: measured 2026-10-14, 92 of 1144 tests failed in a second (every

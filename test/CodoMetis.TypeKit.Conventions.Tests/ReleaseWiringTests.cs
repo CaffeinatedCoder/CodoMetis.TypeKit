@@ -167,7 +167,7 @@ public sealed partial class ReleaseWiringTests
     {
         var changes = Job(BuildWorkflow, "changes");
 
-        foreach (var output in new[] { "legs", "pack", "suite" })
+        foreach (var output in new[] { "legs", "pack", "suite", "projects" })
             changes.ShouldMatch($@"(?m)^      {output}:\s*\$\{{\{{ steps\.select\.outputs\.{output} \}}\}}\s*$",
                 $"dotnet.yml:changes has no `{output}` output taken from the select step's, so the jobs it selects have nothing to read.");
 
@@ -192,9 +192,20 @@ public sealed partial class ReleaseWiringTests
         test.ShouldMatch(@"(?m)^\s+os:\s*\$\{\{ fromJSON\(needs\.changes\.outputs\.legs\) \}\}\s*$",
             "dotnet.yml:test's matrix is not the changes job's legs, so the selection no longer decides which legs run.");
 
-        // A prose-only change runs test/Prose.slnf; any other answer, a missing one included, the whole solution.
-        test.ShouldMatch(@"(?m)^      SOLUTION:\s*\$\{\{ needs\.changes\.outputs\.suite == 'prose' && 'test/Prose\.slnf' \|\| 'CodoMetis\.TypeKit\.slnx' \}\}\s*$",
+        // A prose-only change runs test/Prose.slnf, a reached suite test/Reach.slnf (decision 127); any other answer, a
+        // missing one included, the whole solution.
+        test.ShouldMatch(@"(?m)^      SOLUTION:\s*\$\{\{ needs\.changes\.outputs\.suite == 'prose' && 'test/Prose\.slnf' \|\| needs\.changes\.outputs\.suite == 'reach' && 'test/Reach\.slnf' \|\| 'CodoMetis\.TypeKit\.slnx' \}\}\s*$",
             "dotnet.yml:test does not choose its solution from the changes job's suite, falling back to the whole solution.");
+
+        // The reached suite is written from the changes job's projects before anything restores it.
+        var write = Steps(test).SingleOrDefault(step => step.Contains("> test/Reach.slnf", StringComparison.Ordinal));
+        write.ShouldNotBeNull("dotnet.yml:test does not write test/Reach.slnf, so a reached suite builds a filter nobody wrote.");
+        write.ShouldMatch(@"(?m)^\s+if:\s*needs\.changes\.outputs\.suite == 'reach'\s*$", "dotnet.yml:test writes test/Reach.slnf for a run that is not a reached suite.");
+        write.ShouldContain("PROJECTS: ${{ needs.changes.outputs.projects }}", Case.Sensitive, "dotnet.yml:test does not write test/Reach.slnf from the changes job's projects.");
+        write.ShouldContain("""printf '{"solution":{"path":"../CodoMetis.TypeKit.slnx","projects":%s}}\n' "$PROJECTS" > test/Reach.slnf""", Case.Sensitive,
+            "dotnet.yml:test does not write test/Reach.slnf as a filter of the solution holding the changes job's projects.");
+        test.IndexOf("> test/Reach.slnf", StringComparison.Ordinal).ShouldBeLessThan(test.IndexOf(@"dotnet restore ""$SOLUTION""", StringComparison.Ordinal),
+            "dotnet.yml:test restores before it writes test/Reach.slnf.");
         foreach (var command in new[] { @"dotnet restore ""$SOLUTION""", @"dotnet build ""$SOLUTION"" -c Release", @"dotnet test --solution ""$SOLUTION"" -c Release" })
             test.ShouldContain(command, Case.Sensitive, $"dotnet.yml:test does not run `{command}`, so the suite the changes job chose is not what it builds or tests.");
     }
