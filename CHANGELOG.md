@@ -10,6 +10,12 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
+## 2.4.0 — Unreleased
+
+### Changed
+
+- Packages: the public surface is checked against 2.3.1's, so nothing 2.3.1 ships is removed or changed in 2.4.0.
+
 ## 2.3.1 — 2026-10-31
 
 ### Changed
