@@ -204,6 +204,10 @@ public sealed class HandWrittenOrderingTests : IDisposable
     [InlineData(typeof(FilteredByGreatestDb), "compared by Greatest", "the query filter of FilteredRank")]
     [InlineData(typeof(FilteredByBoxedChildRankDb), "ordered by Max", "the query filter of RankParent")]
     [InlineData(typeof(FilteredByProjectedChildRankDb), "ordered by Max", "the query filter of RankParent")]
+    [InlineData(typeof(FilteredByTableMaxDb), "ordered by Max", "the query filter of FilteredRank")]
+    [InlineData(typeof(CapturedOrderByDescendingFirstDb), "ordered by OrderByDescending", "the query filter of FilteredRank")]
+    [InlineData(typeof(CapturedMaxByDb), "ordered by MaxBy", "the query filter of FilteredRank")]
+    [InlineData(typeof(CapturedBoxedMaxDb), "ordered by Max", "the query filter of FilteredRank")]
     public void A_query_filter_that_orders_by_its_own_CompareTo_is_refused(Type context, string how, string filter)
     {
         _connection.Open();
@@ -248,6 +252,29 @@ public sealed class HandWrittenOrderingTests : IDisposable
         db.ChangeTracker.Clear();
 
         db.Set<FilteredRank>().Select(r => r.Rank.Value).Order().ToList().ShouldBe([2, 3]);
+    }
+
+    /// <summary>
+    /// An ordering over the context's own values that takes no lambda reads nothing of the database, and EF evaluates
+    /// it in memory, by <c>CompareTo</c>: <c>Limits.Max()</c> over 1, 2, 3 is 1 for the descending order, so the filter
+    /// keeps the row ranked 1. Each was refused when the model was built (#225). With a lambda, EF orders the values
+    /// in the database: <c>OrderByDescending(l =&gt; l).First()</c> kept 3 where memory keeps 1, so those stay refused.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(CapturedMaxDb), 1)]
+    [InlineData(typeof(CapturedMinDb), 3)]
+    [InlineData(typeof(CapturedOrderFirstDb), 3)]
+    [InlineData(typeof(CapturedOrderDescendingFirstDb), 1)]
+    public void A_query_filter_that_orders_the_contexts_own_values_runs_in_memory(Type context, int kept)
+    {
+        _connection.Open();
+        using var db = (DbContext)Activator.CreateInstance(context, new DbContextOptionsBuilder().UseSqlite(_connection).UseTypeKit().Options)!;
+        db.Database.EnsureCreated();
+        foreach (var value in new[] { 1, 2, 3 }) db.Add(new FilteredRank { Rank = ProbeDescending.From(value) });
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+
+        db.Set<FilteredRank>().Select(r => r.Rank.Value).ToList().ShouldBe([kept]);
     }
 
     public void Dispose() => _connection.Dispose();
@@ -360,6 +387,63 @@ public sealed class FilteredByProjectedChildRankDb(DbContextOptions options) : D
         modelBuilder.Entity<FilteredRank>();
         modelBuilder.Entity<RankParent>().HasQueryFilter(p => (ProbeDescending)p.Children.Select(c => new { Key = (object)c.Rank }).Max(a => a.Key)! == ProbeDescending.From(2));
     }
+}
+
+/// <summary>A query filter by the greatest rank of the table itself, which the database orders by the column.</summary>
+public sealed class FilteredByTableMaxDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == Set<FilteredRank>().Max(x => x.Rank));
+}
+
+/// <summary>Contexts whose query filter orders values the context holds: in memory without a lambda, in the database with one.</summary>
+public abstract class CapturedLimitsDb(DbContextOptions options) : DbContext(options)
+{
+    public ProbeDescending[] Limits { get; } = [ProbeDescending.From(1), ProbeDescending.From(2), ProbeDescending.From(3)];
+
+    public List<ProbeDescending> LimitList { get; } = [ProbeDescending.From(1), ProbeDescending.From(2), ProbeDescending.From(3)];
+}
+
+public sealed class CapturedMaxDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == Limits.Max());
+}
+
+public sealed class CapturedMinDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == LimitList.Min());
+}
+
+public sealed class CapturedOrderFirstDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == Limits.Order().First());
+}
+
+public sealed class CapturedOrderDescendingFirstDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == LimitList.OrderDescending().First());
+}
+
+public sealed class CapturedOrderByDescendingFirstDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == LimitList.OrderByDescending(l => l).First());
+}
+
+public sealed class CapturedMaxByDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == Limits.MaxBy(l => l));
+}
+
+public sealed class CapturedBoxedMaxDb(DbContextOptions options) : CapturedLimitsDb(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank == (ProbeDescending)Limits.Select(l => (object)l).Max()!);
 }
 
 /// <summary>A projection that holds a rank boxed.</summary>
