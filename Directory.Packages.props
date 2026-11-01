@@ -15,7 +15,7 @@
       The Serilog satellite needs only IDestructuringPolicy and Destructure.With, which every 4.x has:
       the floor is the first release of the current major, and the tests run on it.
     -->
-    <PackageVersion Include="Serilog" Version="4.0.0" />
+    <PackageVersion Include="Serilog" Version="4.4.0" />
   </ItemGroup>
   <!--
         The analyzer's Roslyn reference is the oldest compiler a consumer can load it into, so it
@@ -46,7 +46,7 @@
             The generators resolve NodaTime from the consumer's compilation and never reference it
             themselves; the probes reference it to exercise that path.
         -->
-    <PackageVersion Include="NodaTime" Version="3.3.5" />
+    <PackageVersion Include="NodaTime" Version="3.3.7" />
     <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
     <!--
             The EF satellite's tests: SQLite for the model, Npgsql for SQL and the round trips, SQL Server
